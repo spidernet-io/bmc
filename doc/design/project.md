@@ -65,9 +65,11 @@ agent pod 中的 进程 golang 代码放在 cmd/agent 目录下， 所有的代�
 
 构建镜像，遵循如下规则
 
-- controller pod 的 镜像 构建 docker 位于 image/controller 目录下， 它基于 ubuntu 基础镜像构建，在 dockerfile 中，把整个工程 copy 进行进行，使用工程根目录下 makefile 中的能力，把 cmd/controller 目录下的 golang 代码进行编译，最终打包进入 镜像，作为镜像的启动程序入口 
+- controller pod 的 镜像 构建 docker 位于 image/controller 目录下：
+在 dockerfile 中, 先试用 golang:1.23.1 基础镜像，把整个工程 copy 进入镜像中，使用工程根目录下 makefile 中的能力，把 cmd/controller 目录下的 golang 代码进行编译。 在使用 ubuntu:24.10 基础镜像， 把 编译的 二进制拷贝过来，打包进入 镜像，作为镜像的启动程序入口 
 
-- agent pod 的 镜像 构建 docker 位于 image/agent 目录下，它基于 ubuntu 基础镜像构建，在 dockerfile 中，把整个工程 copy 进行进行，使用工程根目录下 makefile 中的能力，把 cmd/agent 目录下的 golang 代码进行编译，最终打包进入 镜像，作为镜像的启动程序入口 
+- agent pod 的 镜像 构建 docker 位于 image/agent 目录下
+在 dockerfile 中, 先试用 golang:1.23.1 基础镜像，把整个工程 copy 进入镜像中，使用工程根目录下 makefile 中的能力，把 cmd/agent 目录下的 golang 代码进行编译。 在使用 ubuntu:24.10 基础镜像， 把 编译的 二进制拷贝过来，打包进入 镜像，作为镜像的启动程序入口 
 
 
 ## makefile
