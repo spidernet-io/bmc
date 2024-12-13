@@ -55,13 +55,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.BMCServerReconciler{
-		Client: mgr.GetClient(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "BMCServer")
-		os.Exit(1)
-	}
-
 	if err = (&controller.ClusterAgentReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

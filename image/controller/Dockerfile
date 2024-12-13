@@ -6,7 +6,7 @@ WORKDIR /workspace
 COPY . .
 
 # Set GOPROXY for better download speed in China
-#ENV GOPROXY=https://goproxy.io
+ENV GOPROXY=https://goproxy.io
 
 # Build the controller binary using the project's Makefile
 RUN make build-controller

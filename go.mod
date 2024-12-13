@@ -1,6 +1,6 @@
 module github.com/spidernet-io/bmc
 
-go 1.19
+go 1.23.1
 
 require (
 	go.uber.org/zap v1.24.0

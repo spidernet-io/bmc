@@ -54,7 +54,13 @@
 5. 在远程主机上，调试镜像构建
     请基于本工程的 makefile 中的能力，在 调试主机上构建所有的工程镜像 ， 并不断地修改代码，确保镜像构建成功
 
-6. 请远程主机上，基于工程当前的分支， 对修改进行 git 提交 ， 完成 git add, git commit, git push
-   其中，git commit 中的 message 请使用英文
+ 
+## 提交
 
+1. 请执行  go mod vendor 同步代码 ， 并自动修复 bug 
+ 期间，如果要进行 go mod 库同步，请配置如下环境变量 
+    export GOPROXY=https://goproxy.io
+
+2  基于工程当前的分支， 对修改进行 git 提交 ， 完成 git add, git commit, git push
+   其中，git commit 中的 message 请使用英文
 
