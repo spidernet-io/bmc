@@ -1,0 +1,21 @@
+apiVersion: v2
+name: bmc-operator
+description: A Helm chart for BMC Operator
+
+# This is the chart version, which will be taken from VERSION file
+version: 0.1.0
+
+# This is the version number of the application being deployed, which will be taken from VERSION file
+appVersion: "0.1.0"
+
+type: application
+
+maintainers:
+  - name: spidernet-io
+    url: https://github.com/spidernet-io/bmc
+
+keywords:
+  - kubernetes
+  - operator
+  - bmc
+  - server

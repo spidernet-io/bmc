@@ -1,0 +1,45 @@
+replicaCount: 2
+
+image:
+  repository: spidernet-io/bmc/operator
+  pullPolicy: IfNotPresent
+  # tag will be overridden by appVersion from Chart.yaml
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Server configuration
+server:
+  image:
+    repository: spidernet-io/bmc/server
+    pullPolicy: IfNotPresent
+    # tag will be overridden by appVersion from Chart.yaml
