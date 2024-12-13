@@ -43,6 +43,28 @@ agent-image:
 chart:
 	helm package chart/
 
+# E2E tests
+.PHONY: e2e e2e-clean uninstall_e2e
+
+# Run E2E tests
+e2e:
+	@echo "Setting up E2E test environment..."
+	$(MAKE) -C test init
+	$(MAKE) -C test deploy
+	@echo "E2E environment setup completed"
+
+# Clean up E2E environment
+e2e-clean:
+	@echo "Cleaning up E2E environment..."
+	$(MAKE) -C test clean
+	@echo "E2E environment cleanup completed"
+
+# Uninstall E2E environment
+uninstall_e2e:
+	@echo "Uninstalling E2E environment..."
+	$(MAKE) -C test kind-delete
+	@echo "E2E environment uninstalled successfully"
+
 # Cleanup
 .PHONY: clean
 clean:
@@ -61,6 +83,9 @@ usage:
 	@echo "  controller-image - Build controller container image"
 	@echo "  agent-image     - Build agent container image"
 	@echo "  chart           - Package Helm chart"
+	@echo "  e2e             - Run E2E tests"
+	@echo "  e2e-clean       - Clean up E2E environment"
+	@echo "  uninstall_e2e  - Uninstall E2E environment"
 	@echo "  clean           - Remove build artifacts"
 	@echo "  usage           - Show this help message"
 	@echo ""
