@@ -49,6 +49,7 @@ chart:
 # Run E2E tests
 e2e:
 	@echo "Setting up E2E test environment..."
+	$(MAKE) -C test clean
 	$(MAKE) -C test init
 	$(MAKE) -C test deploy
 	@echo "E2E environment setup completed"

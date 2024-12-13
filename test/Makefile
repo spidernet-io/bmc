@@ -11,11 +11,10 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
 - role: worker
-- role: worker
 endef
 export KIND_CONFIG_CONTENT
 
-# Initialize kind cluster with 2 worker nodes
+# Initialize kind cluster with 1 worker node
 init:
 	@echo "Creating kind cluster configuration..."
 	@echo "$$KIND_CONFIG_CONTENT" > $(KIND_CONFIG)

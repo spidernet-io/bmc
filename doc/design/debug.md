@@ -44,6 +44,7 @@
 
     export GOPROXY=https://goproxy.io
 
+    修复完 bug 后，需要运行  go mod vendor 同步
     构建调试成功后，请删除构建出来的一些临时文件和二进制，不要产生工程垃圾
 
 3. 在远程主机上，尝试使用 helm template 命令调试  chart 目录下的代码，确保没有 bug 并进行自动修复 ，能够 helm 渲染成功
