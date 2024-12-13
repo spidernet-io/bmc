@@ -92,3 +92,6 @@ agent pod 中的 进程 golang 代码放在 cmd/agent 目录下， 所有的代�
 在 根目录的 README.md 中, 描述一下内容：
 - 整个工程的功能描述
 - kubernetes 基本安装方法
+
+在工程的所有 golang 代码目录下，创建必要的 readme.md 文件，对相关目录下的代码做简要的设计说明
+

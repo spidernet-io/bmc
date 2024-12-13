@@ -1,19 +1,17 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"net/http"
+	"flag"
 	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/go-logr/logr"
-	"go.uber.org/zap"
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
@@ -26,48 +24,31 @@ var (
 )
 
 func init() {
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = bmcv1beta1.AddToScheme(scheme)
-}
-
-func startHealthServer(log logr.Logger) {
-	mux := http.NewServeMux()
-	
-	// Health check endpoint
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "healthy")
-	})
-	
-	// Readiness check endpoint
-	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "ready")
-	})
-
-	server := &http.Server{
-		Addr:    ":8000",
-		Handler: mux,
-	}
-
-	go func() {
-		log.Info("Starting health check server on :8000")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error(err, "Health check server failed")
-			os.Exit(1)
-		}
-	}()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(bmcv1beta1.AddToScheme(scheme))
 }
 
 func main() {
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+
+	flag.Parse()
+
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: ":8080",
-		Port:              9443,
-		LeaderElection:    true,
-		LeaderElectionID:  "bmc-controller-leader",
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		Port:                   9443,
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "bmc-controller-lock",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -76,32 +57,32 @@ func main() {
 
 	if err = (&controller.BMCServerReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("BMCServer"),
-		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BMCServer")
 		os.Exit(1)
 	}
 
-	// Start health check server
-	startHealthServer(setupLog)
+	if err = (&controller.ClusterAgentReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterAgent")
+		os.Exit(1)
+	}
 
-	setupLog.Info("starting controller")
-	
-	// Handle graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-	
-	go func() {
-		<-sigChan
-		setupLog.Info("Received shutdown signal")
-		cancel()
-	}()
+	//+kubebuilder:scaffold:builder
 
-	if err := mgr.Start(ctx); err != nil {
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	setupLog.Info("starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
