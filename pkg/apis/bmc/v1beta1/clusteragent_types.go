@@ -21,12 +21,21 @@ type ClusterAgent struct {
 // ClusterAgentSpec defines the desired state of ClusterAgent
 type ClusterAgentSpec struct {
 	// Interface specifies the network interface configuration
-	Interface   string `json:"interface"`
+	// +kubebuilder:validation:Required
+	Interface string `json:"interface"`
+
+	// ClusterName specifies the name of the cluster
+	// +kubebuilder:validation:Required
 	ClusterName string `json:"clusterName"`
+
 	// Image is the agent container image
-	Image string `json:"image"`
+	// +optional
+	Image string `json:"image,omitempty"`
+
 	// Replicas is the number of agents to run
-	Replicas int32 `json:"replicas"`
+	// +optional
+	// +kubebuilder:default=1
+	Replicas int32 `json:"replicas,omitempty"`
 }
 
 // ClusterAgentStatus defines the observed state of ClusterAgent

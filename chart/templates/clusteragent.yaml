@@ -1,0 +1,11 @@
+apiVersion: "bmc.spidernet.io/v1beta1"
+kind: "ClusterAgent"
+metadata:
+  name: "{{ .Release.Name }}-clusteragent"
+  labels:
+    {{- include "bmc-operator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.clusterAgent.replicas }}
+  image: "{{ .Values.clusterAgent.image.repository }}:{{ .Values.clusterAgent.image.tag }}"
+  clusterName: "{{ .Values.clusterAgent.clusterName }}"
+  interface: "{{ .Values.clusterAgent.interface }}"

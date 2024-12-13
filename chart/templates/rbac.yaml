@@ -9,14 +9,11 @@ rules:
   - apps
   resources:
   - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
   verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
+  - "*"
 - apiGroups:
   - ""
   resources:
@@ -24,14 +21,11 @@ rules:
   - services
   - configmaps
   - secrets
+  - endpoints
+  - events
+  - persistentvolumeclaims
   verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
+  - "*"
 - apiGroups:
   - bmc.spidernet.io
   resources:
@@ -40,13 +34,36 @@ rules:
   - bmcservers/status
   - clusteragents/status
   verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
+  - "*"
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  - clusterroles
+  - clusterrolebindings
+  verbs:
+  - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-operator
+  labels:
+    {{- include "bmc-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["*"]
+- apiGroups: ["bmc.spidernet.io"]
+  resources: ["clusteragents"]
+  verbs: ["*"]
+- apiGroups: ["bmc.spidernet.io"]
+  resources: ["clusteragents/status"]
+  verbs: ["*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -58,6 +75,21 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: {{ include "bmc-operator.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "bmc-operator.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-operator
+  labels:
+    {{- include "bmc-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-operator
 subjects:
 - kind: ServiceAccount
   name: {{ include "bmc-operator.serviceAccountName" . }}

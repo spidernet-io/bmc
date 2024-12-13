@@ -32,6 +32,8 @@ deploy:
 	@GIT_HASH=$$(git rev-parse --short HEAD); \
 	kind load docker-image spidernet-io/bmc/controller:$$GIT_HASH --name $(KIND_CLUSTER_NAME)
 	@echo "Images loaded successfully"
+	@echo "Installing CRDs..."
+	kubectl create -f ../chart/crds/
 	@echo "Deploying application using Helm chart..."
 	@GIT_HASH=$$(git rev-parse --short HEAD); \
 	helm upgrade --install bmc ../chart --namespace bmc --create-namespace \

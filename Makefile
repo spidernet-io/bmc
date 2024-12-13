@@ -36,7 +36,7 @@ controller-image:
 
 .PHONY: agent-image
 agent-image:
-	docker build -t $(REGISTRY)/server:$(VERSION) -f image/agent/Dockerfile .
+	docker build -t $(REGISTRY)/agent:$(VERSION) -f image/agent/Dockerfile .
 
 # Helm chart
 .PHONY: chart

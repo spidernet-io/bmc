@@ -2,35 +2,47 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
+	"github.com/spidernet-io/bmc/pkg/constants"
+	"github.com/spidernet-io/bmc/pkg/controller/deployment"
+	"github.com/spidernet-io/bmc/pkg/controller/rbac"
+	"github.com/spidernet-io/bmc/pkg/utils"
+)
+
+const (
+	finalizerName = "bmc.spidernet.io/finalizer"
 )
 
 // ClusterAgentReconciler reconciles a ClusterAgent object
 type ClusterAgentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme     *runtime.Scheme
+	rbacMgr    *rbac.Manager
+	deployMgr  *deployment.Manager
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.rbacMgr = rbac.NewManager(r.Client, r.Scheme)
+	r.deployMgr = deployment.NewManager(r.Client, r.Scheme)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bmcv1beta1.ClusterAgent{}).
 		Owns(&appsv1.Deployment{}).
 		Complete(r)
 }
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
+// Reconcile is part of the main kubernetes reconciliation loop
 func (r *ClusterAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.Info("Reconciling ClusterAgent")
@@ -41,79 +53,115 @@ func (r *ClusterAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Initialize status if needed
-	if clusterAgent.Status.Ready == false {
-		clusterAgent.Status.Ready = false
-		clusterAgent.Status.AllocatedIPCount = 0
-		clusterAgent.Status.TotalIPCount = 0
-		if clusterAgent.Status.AllocatedIPs == nil {
-			clusterAgent.Status.AllocatedIPs = make(map[string]string)
+	// Get controller's namespace
+	controllerNS := os.Getenv(constants.EnvPodNamespace)
+	if controllerNS == "" {
+		logger.Error(nil, "POD_NAMESPACE environment variable not set")
+		return ctrl.Result{}, fmt.Errorf("POD_NAMESPACE environment variable not set")
+	}
+
+	// Handle deletion
+	if !clusterAgent.DeletionTimestamp.IsZero() {
+		return r.handleDeletion(ctx, clusterAgent, controllerNS)
+	}
+
+	// Add finalizer if it doesn't exist
+	if !utils.ContainsString(clusterAgent.Finalizers, constants.ClusterAgentFinalizer) {
+		clusterAgent.Finalizers = append(clusterAgent.Finalizers, constants.ClusterAgentFinalizer)
+		if err := r.Update(ctx, clusterAgent); err != nil {
+			logger.Error(err, "Failed to add finalizer")
+			return ctrl.Result{}, err
 		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Get agent image from environment
+	agentImage := os.Getenv(constants.EnvAgentImage)
+	if agentImage == "" {
+		logger.Error(nil, "agentImage environment variable not set")
+		return ctrl.Result{}, fmt.Errorf("agentImage environment variable not set")
+	}
+
+	// Reconcile RBAC resources
+	if err := r.rbacMgr.ReconcileServiceAccount(ctx, clusterAgent, controllerNS); err != nil {
+		logger.Error(err, "Failed to reconcile ServiceAccount")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.rbacMgr.ReconcileRole(ctx, clusterAgent, controllerNS); err != nil {
+		logger.Error(err, "Failed to reconcile Role")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.rbacMgr.ReconcileRoleBinding(ctx, clusterAgent, controllerNS); err != nil {
+		logger.Error(err, "Failed to reconcile RoleBinding")
+		return ctrl.Result{}, err
+	}
+
+	// Reconcile Deployment
+	deploymentName := constants.AgentNamePrefix + clusterAgent.Spec.ClusterName
+	deployment := &appsv1.Deployment{}
+	if err := r.Get(ctx, client.ObjectKey{Name: deploymentName, Namespace: controllerNS}, deployment); err != nil {
+		if errors.IsNotFound(err) {
+			if err := r.deployMgr.CreateOrUpdate(ctx, clusterAgent, controllerNS, agentImage); err != nil {
+				logger.Error(err, "Failed to create Deployment")
+				return ctrl.Result{}, err
+			}
+			logger.Info("Created new Deployment", "Name", deploymentName)
+			return ctrl.Result{Requeue: true}, nil
+		}
+		logger.Error(err, "Failed to get Deployment")
+		return ctrl.Result{}, err
+	}
+
+	// Update deployment if needed
+	if r.deployMgr.ShouldUpdate(deployment, clusterAgent, agentImage) {
+		if err := r.deployMgr.CreateOrUpdate(ctx, clusterAgent, controllerNS, agentImage); err != nil {
+			logger.Error(err, "Failed to update Deployment")
+			return ctrl.Result{}, err
+		}
+		logger.Info("Updated Deployment", "Name", deploymentName)
+	}
+
+	// Update ClusterAgent status
+	ready := r.deployMgr.IsReady(deployment)
+	if clusterAgent.Status.Ready != ready {
+		clusterAgent.Status.Ready = ready
 		if err := r.Status().Update(ctx, clusterAgent); err != nil {
 			logger.Error(err, "Failed to update ClusterAgent status")
 			return ctrl.Result{}, err
 		}
-	}
-
-	// Check if deployment exists, if not create it
-	deployment := &appsv1.Deployment{}
-	err := r.Get(ctx, req.NamespacedName, deployment)
-	if err != nil && errors.IsNotFound(err) {
-		// Define and create a new deployment
-		dep := r.deploymentForClusterAgent(clusterAgent)
-		if err = r.Create(ctx, dep); err != nil {
-			logger.Error(err, "Failed to create Deployment")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
-	} else if err != nil {
-		logger.Error(err, "Failed to get Deployment")
-		return ctrl.Result{}, err
+		logger.Info("Updated ClusterAgent status", "Ready", ready)
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterAgentReconciler) deploymentForClusterAgent(agent *bmcv1beta1.ClusterAgent) *appsv1.Deployment {
-	labels := map[string]string{
-		"app":        "bmc-agent",
-		"controller": agent.Name,
+func (r *ClusterAgentReconciler) handleDeletion(ctx context.Context, agent *bmcv1beta1.ClusterAgent, namespace string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	logger.Info("Handling ClusterAgent deletion", "name", agent.Name)
+
+	if utils.ContainsString(agent.Finalizers, constants.ClusterAgentFinalizer) {
+		// Clean up resources
+		deploymentName := constants.AgentNamePrefix + agent.Spec.ClusterName
+		if err := r.deployMgr.Delete(ctx, deploymentName, namespace); err != nil {
+			logger.Error(err, "Failed to delete Deployment")
+			return ctrl.Result{}, err
+		}
+
+		if err := r.rbacMgr.CleanupRBACResources(ctx, agent, namespace); err != nil {
+			logger.Error(err, "Failed to clean up RBAC resources")
+			return ctrl.Result{}, err
+		}
+
+		// Remove finalizer
+		agent.Finalizers = utils.RemoveString(agent.Finalizers, constants.ClusterAgentFinalizer)
+		if err := r.Update(ctx, agent); err != nil {
+			logger.Error(err, "Failed to remove finalizer")
+			return ctrl.Result{}, err
+		}
+		logger.Info("Successfully removed finalizer")
 	}
 
-	dep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agent.Name,
-			Namespace: agent.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{{
-						Name:  "bmc-agent",
-						Image: "bmc-agent:latest", // You should replace this with your actual image
-						Env: []corev1.EnvVar{
-							{
-								Name:  "CLUSTER_NAME",
-								Value: agent.Spec.ClusterName,
-							},
-							{
-								Name:  "INTERFACE",
-								Value: agent.Spec.Interface,
-							},
-						},
-					}},
-				},
-			},
-		},
-	}
-
-	// Set the owner reference
-	ctrl.SetControllerReference(agent, dep, r.Scheme)
-	return dep
+	return ctrl.Result{}, nil
 }

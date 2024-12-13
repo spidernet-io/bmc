@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-agent-templates
+  labels:
+    {{- include "bmc-operator.labels" . | nindent 4 }}
+data:
+  agent-deployment.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ${NAME}
+      namespace: ${NAMESPACE}
+      labels:
+        app: bmc-agent
+        cluster: ${CLUSTER_NAME}
+    spec:
+      replicas: ${REPLICAS}
+      selector:
+        matchLabels:
+          app: bmc-agent
+          cluster: ${CLUSTER_NAME}
+      template:
+        metadata:
+          labels:
+            app: bmc-agent
+            cluster: ${CLUSTER_NAME}
+        spec:
+          serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+          containers:
+          - name: agent
+            image: ${IMAGE}
+            env:
+            - name: CLUSTER_NAME
+              value: ${CLUSTER_NAME}
+            - name: INTERFACE
+              value: ${INTERFACE}
+  agent-serviceaccount.yaml: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: ${NAME}
+      namespace: ${NAMESPACE}
+      labels:
+        app: bmc-agent
+        cluster: ${CLUSTER_NAME}
+  agent-role.yaml: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: ${NAME}
+      namespace: ${NAMESPACE}
+      labels:
+        app: bmc-agent
+        cluster: ${CLUSTER_NAME}
+    rules:
+    - apiGroups: [""]
+      resources: ["pods", "services", "configmaps", "secrets"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    - apiGroups: ["apps"]
+      resources: ["deployments"]
+      verbs: ["get", "list", "watch"]
+  agent-rolebinding.yaml: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: ${NAME}
+      namespace: ${NAMESPACE}
+      labels:
+        app: bmc-agent
+        cluster: ${CLUSTER_NAME}
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: ${ROLE_NAME}
+    subjects:
+    - kind: ServiceAccount
+      name: ${SERVICE_ACCOUNT_NAME}
+      namespace: ${NAMESPACE}

@@ -1,9 +1,10 @@
 replicaCount: 1
 
+# Controller image configuration
 image:
   repository: spidernet-io/bmc/controller
   pullPolicy: IfNotPresent
-  # tag will be overridden by appVersion from Chart.yaml
+  # tag will be overridden by version from Chart.yaml
   tag: ""
 
 imagePullSecrets: []
@@ -37,3 +38,17 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# Default values for the ClusterAgent CR
+clusterAgent:
+  # Required: network interface configuration
+  interface: "eth0"  # 设置默认网络接口
+  # Required: cluster name
+  clusterName: "defaultCluster"
+  # Optional: number of agent replicas
+  replicas: 1
+  image:
+    # Optional: agent image configuration
+    repository: spidernet-io/bmc/agent
+    # tag will be overridden by version from Chart.yaml
+    tag: ""

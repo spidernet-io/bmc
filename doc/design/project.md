@@ -34,17 +34,37 @@ metadata:
 spec:
   interface: “kube-system/macvlan-pod-network”
   clusterName: "cluster1"
+  image: ""
+  replicas: 1
 status:
   ready: true
 
 所有的 crd 定义的 golang 代码， 放置在 pkg/apis 的 相关目录下
 
+并且 ， helm 默认安装了一个 clusterAgent 的 cr 实例， 实例中 spec 的各个字段，基于 helm 的 values 中的配置进行填充，其中，
+    spec.interface 是一个必写字段， helm values 默认为空， 
+    spec.clusterName 是一个必写字段， helm values  默认为 "defaultCluster"
+    spec.replicas 是一个可选字段， 默认 helm values 为 1
+    spec.image 是一个可选字段，由 相应的 helm values 来渲染，该来渲染，该 value 由 两部分组成，image.repository 默认为 spidernet-io/bmc/agent， image.tag 默认使用 chart.yaml 中的 version
 
-3. 当用户创建了 crd clusterAgent 的实例后，controller 的 golang 进行在 kubernetes 中 创建出一个 单 pod 的 deployment 实例 ， 它名为 agent 组件
+    
+3. controller 组件的 golang 代码中， 
+     相应的 helm values 来渲染，该来渲染，该 value 由 两部分组成，image.repository 默认为 spidernet-io/bmc/agent， image.tag 默认使用 chart.yaml 中的 version
+
+3  controller 的 deployment 中的 一个环境变量 agentImage ， 该值代表镜像名，  通过 helm values 进行渲染，vlaues 由两个部分组成， image.repository 默认为 spidernet-io/bmc/agent ，镜像 tag 默认使用 chart.yaml 中的 version  
+
+3. 当用户创建了 crd clusterAgent 的实例后，controller 的 golang 代码程序中，需要在 kubernetes 中 创建出 对应的 一个 deployment 实例 ， 它名为 agent 组件
+
+- 在 helm 的 chart 中 ，使用 configmap 来存储  agent 的 deployment 和 其对应的 role/rolebinding serviceaccount 的 yaml 目标，该 configmap 挂载到 controller pod 中， controller 的 golang 代码程序 基于 
+该 yaml 模板 来渲染生成 agent 实例
 
 - agent 组件 的  deployment 的 实例名， 为  "agent" + crd clusterAgent 的 spec.clusterName
 
 - agent 组件 的  deployment 的租户，与controller pod 相同  
+
+- agent 组件 的  deployment 的 副本数，遵循 crd clusterAgent 的 spec.replicas ， 否则默认为 1   
+
+- agent 组件 的  image ，遵循 crd clusterAgent 的 spec.image ， 如果该字段为空， 的实例后，controller 使用自己的 环境变量 agentImage 的值来 渲染
 
 - agent 组件 的  yaml 中，在 8000 端口上的健康检查配置
 
@@ -56,6 +76,10 @@ k8s.v1.cni.cncf.io/networks: kube-system/macvlan-pod-network
 - 基于 crd clusterAgent 中的 spec.clusterName 的值， 该 agent 组件 的 deployment 注入 环境变量，环境变量的 key  为 ClusterName， 环境变量的值为 spec.clusterName
 
 - controller 的进程能够 监控 每个  crd clusterAgent 对应的 deployment 实例的状态，如果它的所有 pod 是 running 的，那么就 标记 CRD clusterAgent 中的 status.ready=true， 否则 status.ready=false
+
+- controller 在创建  agent deployment 同时，创建必要的 serviceaccount  和 role/rolebinding
+
+- controller 要监控 crd clusterAgent 的实例销毁事件，当发生时，要删除 对应的 agent 的所有 资源，包括 deployment 、 serviceaccount 、 role/rolebinding 等 
 
 4. controller 代码 具备以下编程要点
 
@@ -100,6 +124,8 @@ agent pod 中的 进程 golang 代码放在 cmd/agent 目录下， 所有的代�
 - 整个golang 的工程为 github.com/spidernet-io/bmc ， 所以，所有功能内的相关代码引用，请遵循该规范
 
 - 工程中所有的 golang、shell代码文件中，都使用英文，包括代码注释和日志
+
+- 对所有的 golang 代码进行合理拆分，按照 功能 进行合理 文件规划，避免出现 单个巨型代码 文件
 
 ## 文档
 

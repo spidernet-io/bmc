@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
-	"github.com/spidernet-io/bmc/pkg/controller"
+	"github.com/spidernet-io/bmc/pkg/controller/clusteragent"
 )
 
 var (
@@ -55,7 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.ClusterAgentReconciler{
+	if err = (&clusteragent.ClusterAgentReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
