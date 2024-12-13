@@ -9,11 +9,12 @@
 
 - helm 的 chart 代码 放置在工程的 chart 目录下
 
-- helm中的 deployment 的 镜像名为 spidernet-io/bmc/controller
+- helm中 的 deployment 的 镜像名为 spidernet-io/bmc/controller
+  helm中 的 deployment 的 镜像 tag 默认使用 chart.yaml 中的 version 也可以支持通过 values 来指定 
 
 - controller pod 中的 进程 golang 代码放在 cmd/controller 目录下，所有的代码，要求有详细的 debug 级别日志，必要的 log 级别和 error 级别的日志，有必要的 代码注释
 
-- chart 的版本为工程根目录下的 VERSION 中的值
+- chart 的  chart.yaml 中的 version 为工程根目录下的 VERSION 文件中的值
 
 - deployment yaml 中 有 pod 健康检查的设置 ， 访问 8000 端口
 
