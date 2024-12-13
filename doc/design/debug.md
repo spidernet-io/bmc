@@ -1,21 +1,59 @@
 # 调试
 
-## 验证代码
+## 本地代码验证
 
 1. 请在本地 主机上，尝试  go build  ， 对 cmd 下所有的 golang 程序进行 编译，确保 能够编译成功，如果不成功，请自动修复相关 编译错误，以确保 能够编译成功 。 期间，如果要进行 go mod 库同步，请配置如下环境变量 
 
-export GOPROXY=https://goproxy.io
+    export GOPROXY=https://goproxy.io
 
-构建调试成功后，请删除本地构建出来的一些临时文件和二进制，不要产生工程垃圾
+    构建调试成功后，请删除本地构建出来的一些临时文件和二进制，不要产生工程垃圾
 
 2. 请在本地主机上，尝试使用 helm template 命令调试  chart 目录下的代码，确保没有 bug 并进行自动修复 ，能够 helm 渲染成功
 
-3. 请在本机上，基于工程当前的分支， 对修改进行 git 提交 ， 完成 git add, git commit, git push
+3. 对所有产生的代表变更，请进行必要的 相应的 markdown 文档变更 
+
+4 . 请在本机上，基于工程当前的分支， 对修改进行 git 提交 ， 完成 git add, git commit, git push
    其中，git commit 中的 message 请使用英文
 
-4. 调试镜像构建
-可以通过 ssh 方式 登录 linux 调试主机 10.20.1.20 ， 用户名 root ， 密码 lanwz
-请在 调试主机 的 /home/welan 目录下，尝试 git clone 本工程的代码  https://github.com/spidernet-io/bmc.git ，确保目录下有工程代码，进入工程后，切换到步骤 3 中的分支。请基于本工程的 makefile 中的能力，在 调试主机上构建所有的工程镜像 ， 并不断地修改本地工程的代码，并再次尝试 本地提交、调试主机 git pull 同步代码，确保镜像构建成功
+5. 调试镜像构建
+    可以通过 ssh 方式 登录 如下 linux 调试主机 
+    10.20.1.20 ， 用户名 root ， 密码 lanwz
 
-5. 尝试 kubernetes 部署
+    请在 调试主机 上，尝试使用如下命令来获取 代码：
+    cd /home/welan
+    [ ! -d "bmc" ] || gi clone  https://github.com/spidernet-io/bmc.git
+    cd bmc
+
+    进入工程目录后，切换到 上一步骤 中的分支。
+    请基于本工程的 makefile 中的能力，在 调试主机上构建所有的工程镜像 ， 并不断地修改本地工程的代码，并再次尝试 本地提交、调试主机 git pull 同步代码，确保镜像构建成功
+
+5. 尝试 kubernetes 环境部署和调试
+
+
+## 远程代码验证
+
+代码位于远程主机上，本地 windsurf 打开的工程就是远程主机上的代码，所以本地编辑器任何的代码变更，都是直接生效到远程主机
+
+因此，使用如下方式 进行代码 
+
+1 可以通过 ssh 方式 登录 如下 linux 调试主机 
+    10.20.1.20 ， 用户名 root ， 密码 lanwz
+    切换到 工程目录下  /home/welan/bmc
+
+2. 在远程主机上，尝试使用 工程根目录下的 makefile   ， 对 cmd 下所有的 golang 程序进行 编译，确保 能够编译成功，如果不成功，请自动修复相关 编译错误，以确保 能够编译成功 。 期间，如果要进行 go mod 库同步，请配置如下环境变量 
+
+    export GOPROXY=https://goproxy.io
+
+    构建调试成功后，请删除构建出来的一些临时文件和二进制，不要产生工程垃圾
+
+3. 在远程主机上，尝试使用 helm template 命令调试  chart 目录下的代码，确保没有 bug 并进行自动修复 ，能够 helm 渲染成功
+
+4. 在远程主机上， 对所有产生的代码变更，请进行必要的 相应的 markdown 文档变更 
+
+5. 在远程主机上，调试镜像构建
+    请基于本工程的 makefile 中的能力，在 调试主机上构建所有的工程镜像 ， 并不断地修改代码，确保镜像构建成功
+
+6. 请远程主机上，基于工程当前的分支， 对修改进行 git 提交 ， 完成 git add, git commit, git push
+   其中，git commit 中的 message 请使用英文
+
 

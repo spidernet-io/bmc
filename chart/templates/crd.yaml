@@ -1,7 +1,7 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: bmcservers.bmc.io
+  name: clusteragents.bmc.io
 spec:
   group: bmc.io
   versions:
@@ -14,15 +14,33 @@ spec:
           properties:
             spec:
               type: object
+              required: ["interface", "clusterName"]
               properties:
                 interface:
                   type: string
+                  description: "The interface to be used by the agent, in format namespace/name"
                 clusterName:
                   type: string
+                  description: "The name of the cluster this agent belongs to"
+            status:
+              type: object
+              properties:
+                ready:
+                  type: boolean
+                  description: "Indicates if the agent deployment is ready"
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+      - name: Ready
+        type: boolean
+        jsonPath: .status.ready
+      - name: Age
+        type: date
+        jsonPath: .metadata.creationTimestamp
   scope: Namespaced
   names:
-    plural: bmcservers
-    singular: bmcserver
-    kind: BmcServer
+    plural: clusteragents
+    singular: clusteragent
+    kind: ClusterAgent
     shortNames:
-    - bmc
+    - ca

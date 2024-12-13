@@ -2,6 +2,13 @@
 
 写一个 kubernetes 下的 组件
 
+##  总体架构
+
+本组件由两个部分构成
+
+- 一组 controller deployment ， 它主要负责 创建 agent 组件的 deployment
+- 一组 agent deployment， 它主要分支完成具体的业务
+
 ## controller 组件
 
 1.它能够通过 helm 进行 安装，必要的安装参数，请基于 helm values 进行暴露
@@ -35,7 +42,9 @@ status:
 
 3. 当用户创建了 crd clusterAgent 的实例后，controller 的 golang 进行在 kubernetes 中 创建出一个 单 pod 的 deployment 实例 ， 它名为 agent 组件
 
-- agent 组件 的  deployment 的 实例名， 为 crd clusterAgent 的 metadata.name
+- agent 组件 的  deployment 的 实例名， 为  "agent" + crd clusterAgent 的 spec.clusterName
+
+- agent 组件 的  deployment 的租户，与controller pod 相同  
 
 - agent 组件 的  yaml 中，在 8000 端口上的健康检查配置
 
@@ -51,6 +60,8 @@ k8s.v1.cni.cncf.io/networks: kube-system/macvlan-pod-network
 4. controller 代码 具备以下编程要点
 
 - 能监听在的端口 8000 上，提供必要的 http 接口，用于进行 pod 的健康检查
+
+- controller 要具备 kubernetes 的 leader 选主机制，当 controller deployment 的 副本数 大于1 时候，controller 的 leader 选举机制是必要的
 
 ## agent 组件
 

@@ -1,9 +1,10 @@
 replicaCount: 2
 
 image:
-  repository: spidernet-io/bmc/operator
+  repository: spidernet-io/bmc/controller
   pullPolicy: IfNotPresent
   # tag will be overridden by appVersion from Chart.yaml
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -36,10 +37,3 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
-# Server configuration
-server:
-  image:
-    repository: spidernet-io/bmc/server
-    pullPolicy: IfNotPresent
-    # tag will be overridden by appVersion from Chart.yaml
