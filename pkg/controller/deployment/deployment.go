@@ -2,135 +2,92 @@ package deployment
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/constants"
+	"github.com/spidernet-io/bmc/pkg/controller/template"
 )
 
 // Manager handles deployment operations
 type Manager struct {
-	client client.Client
-	scheme *runtime.Scheme
+	client      client.Client
+	scheme      *runtime.Scheme
+	tmplManager *template.Manager
 }
 
 // NewManager creates a new deployment manager
 func NewManager(client client.Client, scheme *runtime.Scheme) *Manager {
 	return &Manager{
-		client: client,
-		scheme: scheme,
+		client:      client,
+		scheme:      scheme,
+		tmplManager: template.NewManager("/etc/bmc/templates"),
 	}
 }
 
 // CreateOrUpdate creates or updates the agent deployment
 func (m *Manager) CreateOrUpdate(ctx context.Context, agent *bmcv1beta1.ClusterAgent, namespace, defaultImage string) error {
-	deployment := m.buildDeployment(agent, namespace, defaultImage)
+	// Prepare template data
+	data := map[string]interface{}{
+		"NAME":         fmt.Sprintf("%s-agent", agent.Name),
+		"NAMESPACE":    namespace,
+		"CLUSTER_NAME": agent.Spec.ClusterName,
+		"IMAGE":        agent.Spec.Image,
+		"INTERFACE":    agent.Spec.Interface,
+		"REPLICAS":     agent.Spec.Replicas,
+	}
+
+	// Render deployment from template
+	obj, err := m.tmplManager.RenderYAML("agent-deployment.yaml", data)
+	if err != nil {
+		return fmt.Errorf("failed to render deployment template: %v", err)
+	}
+
+	// Convert to deployment
+	deployment := &appsv1.Deployment{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, deployment); err != nil {
+		return fmt.Errorf("failed to convert unstructured to deployment: %v", err)
+	}
 
 	// Set owner reference
 	if err := controllerutil.SetControllerReference(agent, deployment, m.scheme); err != nil {
 		return err
 	}
 
-	// Create or update deployment
-	err := m.client.Get(ctx, client.ObjectKey{Name: deployment.Name, Namespace: namespace}, &appsv1.Deployment{})
+	// Create or update the deployment
+	existing := &appsv1.Deployment{}
+	err = m.client.Get(ctx, types.NamespacedName{
+		Name:      deployment.Name,
+		Namespace: deployment.Namespace,
+	}, existing)
+
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return m.client.Create(ctx, deployment)
+			// Create new deployment
+			if err := m.client.Create(ctx, deployment); err != nil {
+				return fmt.Errorf("failed to create deployment: %v", err)
+			}
+		} else {
+			return fmt.Errorf("failed to get deployment: %v", err)
 		}
-		return err
-	}
-	return m.client.Update(ctx, deployment)
-}
-
-// buildDeployment builds the agent deployment
-func (m *Manager) buildDeployment(agent *bmcv1beta1.ClusterAgent, namespace, defaultImage string) *appsv1.Deployment {
-	labels := map[string]string{
-		constants.LabelApp:         constants.LabelValueBMCAgent,
-		constants.LabelController:  agent.Name,
-		constants.LabelClusterName: agent.Spec.ClusterName,
+	} else {
+		// Update existing deployment
+		existing.Spec = deployment.Spec
+		if err := m.client.Update(ctx, existing); err != nil {
+			return fmt.Errorf("failed to update deployment: %v", err)
+		}
 	}
 
-	replicas := agent.Spec.Replicas
-	if replicas == 0 {
-		replicas = 1
-	}
-
-	image := defaultImage
-	if agent.Spec.Image != "" {
-		image = agent.Spec.Image
-	}
-
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.AgentNamePrefix + agent.Spec.ClusterName,
-			Namespace: namespace,
-			Labels:    labels,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-					Annotations: map[string]string{
-						constants.NetworkAnnotationKey: agent.Spec.Interface,
-					},
-				},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: constants.AgentNamePrefix + agent.Spec.ClusterName,
-					Containers: []corev1.Container{{
-						Name:  "bmc-agent",
-						Image: image,
-						Env: []corev1.EnvVar{
-							{
-								Name:  constants.EnvClusterName,
-								Value: agent.Spec.ClusterName,
-							},
-						},
-						Ports: []corev1.ContainerPort{{
-							ContainerPort: constants.PortNumber,
-							Name:         constants.PortHealth,
-							Protocol:     corev1.Protocol(constants.PortProtocol),
-						}},
-						LivenessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Path: constants.HealthCheckPath,
-									Port: intstr.FromString(constants.PortHealth),
-								},
-							},
-							InitialDelaySeconds: 15,
-							PeriodSeconds:      20,
-							TimeoutSeconds:     5,
-							FailureThreshold:   3,
-						},
-						ReadinessProbe: &corev1.Probe{
-							ProbeHandler: corev1.ProbeHandler{
-								HTTPGet: &corev1.HTTPGetAction{
-									Path: constants.HealthCheckPath,
-									Port: intstr.FromString(constants.PortHealth),
-								},
-							},
-							InitialDelaySeconds: 5,
-							PeriodSeconds:      10,
-							TimeoutSeconds:     5,
-							FailureThreshold:   3,
-						},
-					}},
-				},
-			},
-		},
-	}
+	return nil
 }
 
 // IsReady checks if the deployment is ready

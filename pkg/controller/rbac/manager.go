@@ -3,200 +3,105 @@ package rbac
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
+	"github.com/spidernet-io/bmc/pkg/controller/template"
 )
 
-// Manager manages RBAC resources for ClusterAgent
+// Manager handles RBAC operations
 type Manager struct {
-	client client.Client
-	scheme *runtime.Scheme
+	client      client.Client
+	scheme      *runtime.Scheme
+	tmplManager *template.Manager
 }
 
 // NewManager creates a new RBAC manager
 func NewManager(client client.Client, scheme *runtime.Scheme) *Manager {
 	return &Manager{
-		client: client,
-		scheme: scheme,
+		client:      client,
+		scheme:      scheme,
+		tmplManager: template.NewManager("/etc/bmc/templates"),
 	}
 }
 
-// formatName formats a name to be RFC 1123 compliant
-func formatName(name string) string {
-	// Replace any uppercase letters with lowercase
-	name = strings.ToLower(name)
-	// Replace any non-alphanumeric characters with '-'
-	name = regexp.MustCompile(`[^a-z0-9-]`).ReplaceAllString(name, "-")
-	// Ensure the name starts and ends with an alphanumeric character
-	name = strings.Trim(name, "-")
-	// If the name is empty after trimming, use a default name
-	if name == "" {
-		name = "agent"
+// ReconcileRBAC reconciles all RBAC resources for a ClusterAgent
+func (m *Manager) ReconcileRBAC(ctx context.Context, clusterAgent *bmcv1beta1.ClusterAgent) error {
+	// Prepare template data
+	data := map[string]interface{}{
+		"NAME":               fmt.Sprintf("%s-agent", clusterAgent.Name),
+		"NAMESPACE":          clusterAgent.Namespace,
+		"CLUSTER_NAME":       clusterAgent.Spec.ClusterName,
+		"SERVICE_ACCOUNT_NAME": fmt.Sprintf("%s-agent-sa", clusterAgent.Name),
+		"ROLE_NAME":           fmt.Sprintf("%s-agent-role", clusterAgent.Name),
 	}
-	return name
+
+	// Reconcile ServiceAccount
+	if err := m.reconcileResource(ctx, clusterAgent, "agent-serviceaccount.yaml", &corev1.ServiceAccount{}, data); err != nil {
+		return fmt.Errorf("failed to reconcile ServiceAccount: %v", err)
+	}
+
+	// Reconcile Role
+	if err := m.reconcileResource(ctx, clusterAgent, "agent-role.yaml", &rbacv1.Role{}, data); err != nil {
+		return fmt.Errorf("failed to reconcile Role: %v", err)
+	}
+
+	// Reconcile RoleBinding
+	if err := m.reconcileResource(ctx, clusterAgent, "agent-rolebinding.yaml", &rbacv1.RoleBinding{}, data); err != nil {
+		return fmt.Errorf("failed to reconcile RoleBinding: %v", err)
+	}
+
+	return nil
 }
 
-// ReconcileServiceAccount reconciles the ServiceAccount for the ClusterAgent
-func (m *Manager) ReconcileServiceAccount(ctx context.Context, agent *bmcv1beta1.ClusterAgent, namespace string) error {
-	saName := formatName(fmt.Sprintf("agent-%s", agent.Spec.ClusterName))
-
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      saName,
-			Namespace: namespace,
-		},
+// reconcileResource reconciles a single resource from a template
+func (m *Manager) reconcileResource(ctx context.Context, clusterAgent *bmcv1beta1.ClusterAgent, templateName string, obj runtime.Object, data map[string]interface{}) error {
+	// Render resource from template
+	unstructured, err := m.tmplManager.RenderYAML(templateName, data)
+	if err != nil {
+		return fmt.Errorf("failed to render template %s: %v", templateName, err)
 	}
 
-	if err := controllerutil.SetControllerReference(agent, sa, m.scheme); err != nil {
-		return fmt.Errorf("failed to set controller reference: %w", err)
+	// Convert to concrete type
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructured.Object, obj); err != nil {
+		return fmt.Errorf("failed to convert unstructured to object: %v", err)
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, m.client, sa, func() error {
-		return nil // No updates needed for ServiceAccount
-	})
-
-	return err
-}
-
-// ReconcileRole reconciles the Role for the ClusterAgent
-func (m *Manager) ReconcileRole(ctx context.Context, agent *bmcv1beta1.ClusterAgent, namespace string) error {
-	roleName := formatName(fmt.Sprintf("agent-%s", agent.Spec.ClusterName))
-	
-	role := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: namespace,
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"},
-				Verbs:     []string{"*"},
-			},
-			{
-				APIGroups: []string{"apps"},
-				Resources: []string{"deployments", "daemonsets", "replicasets", "statefulsets"},
-				Verbs:     []string{"*"},
-			},
-		},
+	// Set controller reference
+	if err := controllerutil.SetControllerReference(clusterAgent, obj.(client.Object), m.scheme); err != nil {
+		return fmt.Errorf("failed to set controller reference: %v", err)
 	}
 
-	if err := controllerutil.SetControllerReference(agent, role, m.scheme); err != nil {
-		return fmt.Errorf("failed to set controller reference: %w", err)
+	// Get object key
+	key := client.ObjectKey{
+		Name:      unstructured.GetName(),
+		Namespace: unstructured.GetNamespace(),
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, m.client, role, func() error {
-		role.Rules = []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"},
-				Verbs:     []string{"*"},
-			},
-			{
-				APIGroups: []string{"apps"},
-				Resources: []string{"deployments", "daemonsets", "replicasets", "statefulsets"},
-				Verbs:     []string{"*"},
-			},
+	// Create or update the resource
+	existing := obj.DeepCopyObject().(client.Object)
+	err = m.client.Get(ctx, key, existing)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Create new resource
+			if err := m.client.Create(ctx, obj.(client.Object)); err != nil {
+				return fmt.Errorf("failed to create resource: %v", err)
+			}
+		} else {
+			return fmt.Errorf("failed to get resource: %v", err)
 		}
-		return nil
-	})
-
-	return err
-}
-
-// ReconcileRoleBinding reconciles the RoleBinding for the ClusterAgent
-func (m *Manager) ReconcileRoleBinding(ctx context.Context, agent *bmcv1beta1.ClusterAgent, namespace string) error {
-	roleName := formatName(fmt.Sprintf("agent-%s", agent.Spec.ClusterName))
-	saName := formatName(fmt.Sprintf("agent-%s", agent.Spec.ClusterName))
-
-	binding := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: namespace,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      saName,
-				Namespace: namespace,
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     roleName,
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(agent, binding, m.scheme); err != nil {
-		return fmt.Errorf("failed to set controller reference: %w", err)
-	}
-
-	_, err := controllerutil.CreateOrUpdate(ctx, m.client, binding, func() error {
-		binding.Subjects = []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      saName,
-				Namespace: namespace,
-			},
+	} else {
+		// Update existing resource
+		if err := m.client.Update(ctx, obj.(client.Object)); err != nil {
+			return fmt.Errorf("failed to update resource: %v", err)
 		}
-		binding.RoleRef = rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     roleName,
-		}
-		return nil
-	})
-
-	return err
-}
-
-// CleanupRBACResources cleans up all RBAC resources for the ClusterAgent
-func (m *Manager) CleanupRBACResources(ctx context.Context, agent *bmcv1beta1.ClusterAgent, namespace string) error {
-	roleName := formatName(fmt.Sprintf("agent-%s", agent.Spec.ClusterName))
-	saName := formatName(fmt.Sprintf("agent-%s", agent.Spec.ClusterName))
-
-	// Delete RoleBinding
-	binding := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: namespace,
-		},
-	}
-	if err := m.client.Delete(ctx, binding); err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete RoleBinding: %w", err)
-	}
-
-	// Delete Role
-	role := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: namespace,
-		},
-	}
-	if err := m.client.Delete(ctx, role); err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete Role: %w", err)
-	}
-
-	// Delete ServiceAccount
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      saName,
-			Namespace: namespace,
-		},
-	}
-	if err := m.client.Delete(ctx, sa); err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete ServiceAccount: %w", err)
 	}
 
 	return nil
