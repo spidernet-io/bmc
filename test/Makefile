@@ -25,18 +25,17 @@ init:
 
 # Deploy application to kind cluster
 deploy:
+	@echo "Building images with git commit hash tag..."
+	@GIT_HASH=$$(git rev-parse --short HEAD); \
+	cd .. && VERSION=$$GIT_HASH make images
 	@echo "Loading images into kind cluster..."
-	@IMAGE=$$(grep "repository:" ../chart/values.yaml | awk '{print $$2}'); \
-	TAG=$$(grep "tag:" ../chart/values.yaml | awk '{print $$2}' | sed 's/"//g'); \
-	if [ -z "$$TAG" ]; then \
-		TAG=$$(grep "appVersion:" ../chart/Chart.yaml | awk '{print $$2}' | sed 's/"//g'); \
-	fi; \
-	FULL_IMAGE="$$IMAGE:$$TAG"; \
-	echo "Loading image: $$FULL_IMAGE"; \
-	kind load docker-image $$FULL_IMAGE --name $(KIND_CLUSTER_NAME)
+	@GIT_HASH=$$(git rev-parse --short HEAD); \
+	kind load docker-image spidernet-io/bmc/controller:$$GIT_HASH --name $(KIND_CLUSTER_NAME)
 	@echo "Images loaded successfully"
 	@echo "Deploying application using Helm chart..."
-	helm upgrade --install bmc ../chart --namespace bmc --create-namespace
+	@GIT_HASH=$$(git rev-parse --short HEAD); \
+	helm upgrade --install bmc ../chart --namespace bmc --create-namespace \
+		--set image.tag=$$GIT_HASH
 
 # Clean up kind cluster
 clean:

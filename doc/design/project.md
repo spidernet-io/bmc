@@ -12,7 +12,7 @@
 ## controller 组件
 
 1.它能够通过 helm 进行 安装，必要的安装参数，请基于 helm values 进行暴露
-安装后，默认安装 一个 2 pod 的 deployment 的 controller 组件
+安装后，默认安装 一个 1 pod 的 deployment 的 controller 组件
 
 - helm 的 chart 代码 放置在工程的 chart 目录下
 

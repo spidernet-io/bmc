@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,13 +33,16 @@ spec:
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: 8000
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+            - name: health
+              containerPort: 8081
               protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
-              port: http
+              port: health
             initialDelaySeconds: 15
             periodSeconds: 20
             timeoutSeconds: 5
@@ -46,16 +50,16 @@ spec:
           readinessProbe:
             httpGet:
               path: /readyz
-              port: http
+              port: health
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: clusterName
-              value: {{ .Values.clusterName }}
+              value: {{ .Values.clusterName | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

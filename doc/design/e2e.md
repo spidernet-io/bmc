@@ -8,8 +8,9 @@
 - test/Makefile 文件中，有 名为 init  的 target  ，  部署一个kubernetes 集群的 kind 环境，其中包括一个 control-plane 和 一个 worker 节点  
 
 - test/Makefile 文件中，有 名为 deploy 的target  支持 部署本工程
-第一步，它需要使用 chart 目录中 yaml 来感知 镜像，使用 kind load 把 本地主机上的镜像 加载到 kind 节点上
-第二步，它使用 chart 目录中的 chart ，部署本到 kind 环境中
+第一步，它要使用  工程的 git 的 commit hash 号 作为镜像 tag， 使用 工程 根目录下的 Makefile 来构建所有 测试镜像
+第二步，它需要使用 上一步镜像，使用 kind load 把 本地主机上的镜像 加载到 kind 节点上
+第三步，它使用 chart 目录中的 chart ，部署本到 kind 环境中, 其中， 其 镜像 tag 使用 工程的 git 的 commit hash 号
 
 - test/Makefile 文件中，有 名为 clean 的 target  支持 卸载 kind  kubernetes 环境 ， 该target 中的命令允许必要的失败，例如 kind 集群不存在等场景
 
@@ -31,7 +32,8 @@
 2 在远程主机上，构建镜像构建
     请基于本工程的 makefile 中的能力，在 调试主机上构建所有的工程镜像 ， 并不断地修改代码，确保镜像构建成功
 
-3. 在远程主机上，尝试使用 make e2e 来验证 环境能够部署成功，本工程 chart 能够部署成功 ，期间，如果有bug ，尝试修复 ， 修复完 bug 后，需要运行  go mod vendor 同步
+3. 在远程主机上，尝试使用 make e2e 来验证 环境能够部署成功，其中，重点验证 本工程 的 chart 能够在 环境中部署成功 ，pod 运行正常 ，其中的 日志没有 异常
+期间，如果有bug ，尝试修复 ， 修复完 bug 后，需要运行  go mod vendor 同步
 
 ## 提交
 

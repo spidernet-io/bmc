@@ -1,5 +1,5 @@
 # Version and image registry configuration
-VERSION := $(shell cat VERSION)
+VERSION ?= $(shell git rev-parse --short HEAD)
 REGISTRY ?= spidernet-io/bmc
 
 # Go build configuration
@@ -91,7 +91,7 @@ usage:
 	@echo "  usage           - Show this help message"
 	@echo ""
 	@echo "Environment variables:"
-	@echo "  VERSION        - Version tag for images (default: from VERSION file)"
+	@echo "  VERSION        - Version tag for images (default: from git commit hash)"
 	@echo "  REGISTRY       - Container image registry (default: spidernet-io/bmc)"
 	@echo "  GOOS          - Target OS for build (default: linux)"
 	@echo "  GOARCH        - Target architecture for build (default: amd64)"

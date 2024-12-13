@@ -1,0 +1,64 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "bmc-operator.fullname" . }}
+  labels:
+    {{- include "bmc-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - configmaps
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - bmc.spidernet.io
+  resources:
+  - bmcservers
+  - clusteragents
+  - bmcservers/status
+  - clusteragents/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "bmc-operator.fullname" . }}
+  labels:
+    {{- include "bmc-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "bmc-operator.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "bmc-operator.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
