@@ -36,11 +36,11 @@ func NewManager(client client.Client, scheme *runtime.Scheme) *Manager {
 func (m *Manager) ReconcileRBAC(ctx context.Context, clusterAgent *bmcv1beta1.ClusterAgent) error {
 	// Prepare template data
 	data := map[string]interface{}{
-		"NAME":               fmt.Sprintf("%s-agent", clusterAgent.Name),
-		"NAMESPACE":          clusterAgent.Namespace,
-		"CLUSTER_NAME":       clusterAgent.Spec.ClusterName,
-		"SERVICE_ACCOUNT_NAME": fmt.Sprintf("%s-agent-sa", clusterAgent.Name),
-		"ROLE_NAME":           fmt.Sprintf("%s-agent-role", clusterAgent.Name),
+		"Name":              fmt.Sprintf("%s-agent", clusterAgent.Name),
+		"Namespace":         clusterAgent.Namespace,
+		"ClusterName":       clusterAgent.Spec.ClusterName,
+		"ServiceAccountName": fmt.Sprintf("%s-agent-sa", clusterAgent.Name),
+		"RoleName":          fmt.Sprintf("%s-agent-role", clusterAgent.Name),
 	}
 
 	// Reconcile ServiceAccount

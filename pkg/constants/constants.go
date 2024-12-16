@@ -14,11 +14,13 @@ const (
 
 	// Environment variables
 	EnvPodNamespace = "POD_NAMESPACE"
-	EnvAgentImage   = "agentImage"
-	EnvClusterName  = "ClusterName"
+	EnvAgentImage   = "AGENT_IMAGE"
+	EnvClusterName  = "CLUSTER_NAME"
 
 	// Resource names
-	AgentNamePrefix = "agent-"
+	AgentNamePrefix        = "agent-"
+	AgentRolePrefix       = "agent-role-"
+	AgentRoleBindingPrefix = "agent-rolebinding-"
 
 	// Port names and numbers
 	PortHealth     = "health"

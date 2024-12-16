@@ -1,11 +1,45 @@
 replicaCount: 1
 
-# Controller image configuration
+# Log level configuration
+# Available values: debug, info, error
+logLevel: "debug"
+
 image:
   repository: spidernet-io/bmc/controller
   pullPolicy: IfNotPresent
   # tag will be overridden by version from Chart.yaml
   tag: ""
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+securityContext: {}
+
+# ClusterAgent configuration
+clusterAgent:
+  image:
+    repository: spidernet-io/bmc/agent
+    pullPolicy: IfNotPresent
+    # tag will be overridden by version from Chart.yaml
+    tag: ""
+  # Required: network interface configuration
+  underlayInterface: "kube-system/macvlan-pod-network"
+  # Required: cluster name
+  clusterName: "defaultcluster"
+
+# Webhook configuration
+webhook:
+  # Port for webhook server to listen on and service to expose
+  webhookPort: 443
+  # Port for metrics server
+  metricsPort: 8080
+  # Certificate configuration
+  certificate:
+    # Validity duration in days
+    validityDays: 36500
 
 imagePullSecrets: []
 nameOverride: ""
@@ -25,30 +59,8 @@ podSecurityContext: {}
 
 securityContext: {}
 
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
 nodeSelector: {}
 
 tolerations: []
 
 affinity: {}
-
-# Default values for the ClusterAgent CR
-clusterAgent:
-  # Required: network interface configuration
-  interface: "eth0"  # 设置默认网络接口
-  # Required: cluster name
-  clusterName: "defaultCluster"
-  # Optional: number of agent replicas
-  replicas: 1
-  image:
-    # Optional: agent image configuration
-    repository: spidernet-io/bmc/agent
-    # tag will be overridden by version from Chart.yaml
-    tag: ""

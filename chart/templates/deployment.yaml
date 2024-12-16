@@ -32,47 +32,64 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ default .Chart.Version .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --metrics-bind-address=:{{ .Values.webhook.metricsPort }}
+            - --health-probe-bind-address=:8081
+            - --webhook-port={{ .Values.webhook.webhookPort }}
+            - --leader-elect
           env:
-            - name: agentImage
-              value: "{{ .Values.clusterAgent.image.repository }}:{{ default .Chart.Version .Values.clusterAgent.image.tag }}"
+            - name: AGENT_IMAGE
+              value: "{{ .Values.clusterAgent.image.repository }}:{{ .Values.clusterAgent.image.tag }}"
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: clusterName
-              value: {{ .Values.clusterName | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | default "info" | quote }}
           ports:
+            - name: webhook
+              containerPort: {{ .Values.webhook.webhookPort }}
+              protocol: TCP
             - name: metrics
-              containerPort: 8080
+              containerPort: {{ .Values.webhook.metricsPort }}
               protocol: TCP
-            - name: health
-              containerPort: 8000
+            - name: https
+              containerPort: 8443
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: health
-            initialDelaySeconds: 15
-            periodSeconds: 20
-            timeoutSeconds: 5
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: health
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
           volumeMounts:
             - name: agent-templates
               mountPath: /etc/bmc/templates
+            - name: webhook-certs
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 30
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            failureThreshold: 30
+            periodSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: agent-templates
           configMap:
             name: {{ .Release.Name }}-agent-templates
+        - name: webhook-certs
+          secret:
+            secretName: {{ .Release.Name }}-webhook-server-cert
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

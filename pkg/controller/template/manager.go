@@ -36,9 +36,7 @@ func (m *Manager) RenderYAML(templateName string, data map[string]interface{}) (
 	}
 
 	// Create a new template and parse the content
-	tmpl, err := template.New(templateName).
-		Delims("${", "}").  // Use ${} as delimiters to avoid conflicts with helm templates
-		Parse(string(content))
+	tmpl, err := template.New(templateName).Parse(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template %s: %v", templateName, err)
 	}

@@ -12,11 +12,11 @@ BIN_DIR := bin
 
 # Default target
 .PHONY: all
-all: build images chart
+all: images
 
 # Build targets
-.PHONY: build
-build: build-controller build-agent
+.PHONY: build-binaries
+build-binaries: build-controller build-agent
 
 .PHONY: build-controller
 build-controller:
@@ -77,7 +77,7 @@ clean:
 usage:
 	@echo "Available targets:"
 	@echo "  all             - Build binaries, container images, and Helm chart"
-	@echo "  build           - Build controller and agent binaries"
+	@echo "  build-binaries  - Build controller and agent binaries"
 	@echo "  build-controller - Build controller binary"
 	@echo "  build-agent     - Build agent binary"
 	@echo "  images          - Build container images"

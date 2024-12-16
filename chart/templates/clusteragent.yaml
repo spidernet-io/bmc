@@ -4,8 +4,10 @@ metadata:
   name: "{{ .Release.Name }}-clusteragent"
   labels:
     {{- include "bmc-operator.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": "pre-install"
 spec:
   replicas: {{ .Values.clusterAgent.replicas }}
   image: "{{ .Values.clusterAgent.image.repository }}:{{ .Values.clusterAgent.image.tag }}"
   clusterName: "{{ .Values.clusterAgent.clusterName }}"
-  interface: "{{ .Values.clusterAgent.interface }}"
+  underlayInterface: "{{ .Values.clusterAgent.underlayInterface }}"

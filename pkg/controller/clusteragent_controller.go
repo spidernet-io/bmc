@@ -3,9 +3,9 @@ package controller
 import (
 	"context"
 	"fmt"
-	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -14,8 +14,8 @@ import (
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/constants"
-	"github.com/spidernet-io/bmc/pkg/controller/deployment"
 	"github.com/spidernet-io/bmc/pkg/controller/rbac"
+	"github.com/spidernet-io/bmc/pkg/controller/template"
 	"github.com/spidernet-io/bmc/pkg/utils"
 )
 
@@ -28,13 +28,13 @@ type ClusterAgentReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	rbacMgr    *rbac.Manager
-	deployMgr  *deployment.Manager
+	deployMgr  *template.Manager
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.rbacMgr = rbac.NewManager(r.Client, r.Scheme)
-	r.deployMgr = deployment.NewManager(r.Client, r.Scheme)
+	r.deployMgr = template.NewManager(r.Client, r.Scheme)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bmcv1beta1.ClusterAgent{}).

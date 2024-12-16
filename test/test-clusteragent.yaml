@@ -1,0 +1,9 @@
+apiVersion: bmc.spidernet.io/v1beta1
+kind: ClusterAgent
+metadata:
+  name: test-clusteragent
+spec:
+  image: spidernet-io/bmc/agent:v0.0.1
+  replicas: 1
+  clusterName: uppercase-cluster
+  underlayInterface: kube-system/macvlan-pod-network

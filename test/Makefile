@@ -25,19 +25,16 @@ init:
 
 # Deploy application to kind cluster
 deploy:
-	@echo "Building images with git commit hash tag..."
-	@GIT_HASH=$$(git rev-parse --short HEAD); \
-	cd .. && VERSION=$$GIT_HASH make images
 	@echo "Loading images into kind cluster..."
 	@GIT_HASH=$$(git rev-parse --short HEAD); \
-	kind load docker-image spidernet-io/bmc/controller:$$GIT_HASH --name $(KIND_CLUSTER_NAME)
+	kind load docker-image spidernet-io/bmc/controller:$$GIT_HASH --name $(KIND_CLUSTER_NAME) && \
+	kind load docker-image spidernet-io/bmc/agent:$$GIT_HASH --name $(KIND_CLUSTER_NAME)
 	@echo "Images loaded successfully"
-	@echo "Installing CRDs..."
-	kubectl create -f ../chart/crds/
 	@echo "Deploying application using Helm chart..."
 	@GIT_HASH=$$(git rev-parse --short HEAD); \
 	helm upgrade --install bmc ../chart --namespace bmc --create-namespace \
-		--set image.tag=$$GIT_HASH
+		--set image.tag=$$GIT_HASH \
+		--set clusterAgent.image.tag=$$GIT_HASH
 
 # Clean up kind cluster
 clean:

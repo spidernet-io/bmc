@@ -32,7 +32,7 @@ kind: clusterAgent
 metadata:
   name: test
 spec:
-  interface: “kube-system/macvlan-pod-network”
+  underlayInterface: “kube-system/macvlan-pod-network”
   clusterName: "cluster1"
   image: ""
   replicas: 1
@@ -42,7 +42,7 @@ status:
 所有的 crd 定义的 golang 代码， 放置在 pkg/apis 的 相关目录下
 
 并且 ， helm 默认安装了一个 clusterAgent 的 cr 实例， 实例中 spec 的各个字段，基于 helm 的 values 中的配置进行填充，其中，
-    spec.interface 是一个必写字段， helm values 默认为空， 
+    spec.underlayInterface 是一个必写字段， helm values 默认为空， 
     spec.clusterName 是一个必写字段， helm values  默认为 "defaultCluster"
     spec.replicas 是一个可选字段， 默认 helm values 为 1
     spec.image 是一个可选字段，由 相应的 helm values 来渲染，该来渲染，该 value 由 两部分组成，image.repository 默认为 spidernet-io/bmc/agent， image.tag 默认使用 chart.yaml 中的 version
@@ -54,6 +54,7 @@ status:
 3  controller 的 deployment 中的 一个环境变量 agentImage ， 该值代表镜像名，  通过 helm values 进行渲染，vlaues 由两个部分组成， image.repository 默认为 spidernet-io/bmc/agent ，镜像 tag 默认使用 chart.yaml 中的 version  
 
 3. 当用户创建了 crd clusterAgent 的实例后，controller 的 golang 代码程序中，需要在 kubernetes 中 创建出 对应的 一个 deployment 实例 ， 它名为 agent 组件
+当用户 删除了 ， crd clusterAgent 的实例后，controller 的 golang 代码程序中 ， 应该尝试删除当初创建的 对于的 k8s 的对象
 
 - 在 helm 的 chart 中 ，使用 configmap 来存储  agent 的 deployment 和 其对应的 role/rolebinding serviceaccount 的 yaml 目标，该 configmap 挂载到 controller pod 中， controller 的 golang 代码程序 基于 
 该 yaml 模板 来渲染生成 agent 实例
@@ -70,8 +71,8 @@ status:
 
 - agent 组件 的  yaml 中，配置一些与该实例对应的 必要 label 和 annotation 
 
-- 基于 crd clusterAgent 中的 spec.interface 的值，结合 “k8s.v1.cni.cncf.io/networks” 的 key 名， 该 agent 组件 的 deployment 的 annotation 中带有如下
-k8s.v1.cni.cncf.io/networks: kube-system/macvlan-pod-network
+- 基于 crd clusterAgent 中的 spec.underlayInterface 的值， 设置  agent 组件 的 deployment 的 annotation 中带有如下
+k8s.v1.cni.cncf.io/networks: "k8s.v1.cni.cncf.io/networks"
 
 - 基于 crd clusterAgent 中的 spec.clusterName 的值， 该 agent 组件 的 deployment 注入 环境变量，环境变量的 key  为 ClusterName， 环境变量的值为 spec.clusterName
 
@@ -86,6 +87,15 @@ k8s.v1.cni.cncf.io/networks: kube-system/macvlan-pod-network
 - 能监听在的端口 8000 上，提供必要的 http 接口，用于进行 pod 的健康检查
 
 - controller 要具备 kubernetes 的 leader 选主机制，当 controller deployment 的 副本数 大于1 时候，controller 的 leader 选举机制是必要的
+
+5.  在 controller 代码中，添加对于 ClusterAgent crd 实例的 webhook 逻辑
+- helm 自动创建相关的 service、webhook，使用 helm 为 webhook 注入 100 年可用的 tls 证书
+- ClusterAgent 的 spec.clusterName 是必填字段 。 controller 对 ClusterAgent 的 spec.clusterName 进行校验，其必须是小写的，其字符串必须可用来命名 k8s 中任何对象的 name 的  , 并且，在所有 ClusterAgent 实例中，它们的 spec.clusterName 必须是不相互冲突的，确保唯一
+- ClusterAgent 的 spec.image 是可选字段，如果创建的 cr 有该值，则使用它， 如果 没有， webhhook 对其修改，设置为 controller pod 的 yaml 中的 环境变量 AGENT_IMAGE , 该 环境变量的值 来自与 helm values 中的 clusterAgent.image.repository 和 clusterAgent.image.tag 的 渲染 
+- ClusterAgent 的 spec.replicas 是可选字段，如果创建的 cr 有该值，则使用它, 但必须是一个 大于等于 0 的数字， 如果 没有， webhhook 对其修改，设置为 1 
+- ClusterAgent 的 spec.underlayInterface 是必填字段
+- controller 需要监控 每个 ClusterAgent cr 实例对应的 deployment 的状态， 如果是 所有副本正常 的 running ，则更新对应的 ClusterAgent cr 实例 的 status.ready=true， 否则 status.ready=false
+ 
 
 ## agent 组件
 

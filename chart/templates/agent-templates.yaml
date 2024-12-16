@@ -9,50 +9,50 @@ data:
     apiVersion: apps/v1
     kind: Deployment
     metadata:
-      name: ${NAME}
-      namespace: ${NAMESPACE}
+      name: {{`{{ .Name }}`}}
+      namespace: {{`{{ .Namespace }}`}}
       labels:
         app: bmc-agent
-        cluster: ${CLUSTER_NAME}
+        cluster: {{`{{ .ClusterName }}`}}
     spec:
-      replicas: ${REPLICAS}
+      replicas: {{`{{ .Replicas }}`}}
       selector:
         matchLabels:
           app: bmc-agent
-          cluster: ${CLUSTER_NAME}
+          cluster: {{`{{ .ClusterName }}`}}
       template:
         metadata:
           labels:
             app: bmc-agent
-            cluster: ${CLUSTER_NAME}
+            cluster: {{`{{ .ClusterName }}`}}
+          annotations:
+            k8s.v1.cni.cncf.io/networks: {{`{{ .UnderlayInterface }}`}}
         spec:
-          serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+          serviceAccountName: {{`{{ .ServiceAccountName }}`}}
           containers:
           - name: agent
-            image: ${IMAGE}
+            image: {{`{{ .Image }}`}}
             env:
             - name: CLUSTER_NAME
-              value: ${CLUSTER_NAME}
-            - name: INTERFACE
-              value: ${INTERFACE}
+              value: {{`{{ .ClusterName }}`}}
   agent-serviceaccount.yaml: |
     apiVersion: v1
     kind: ServiceAccount
     metadata:
-      name: ${NAME}
-      namespace: ${NAMESPACE}
+      name: {{`{{ .Name }}`}}
+      namespace: {{`{{ .Namespace }}`}}
       labels:
         app: bmc-agent
-        cluster: ${CLUSTER_NAME}
+        cluster: {{`{{ .ClusterName }}`}}
   agent-role.yaml: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
-      name: ${NAME}
-      namespace: ${NAMESPACE}
+      name: {{`{{ .Name }}`}}
+      namespace: {{`{{ .Namespace }}`}}
       labels:
         app: bmc-agent
-        cluster: ${CLUSTER_NAME}
+        cluster: {{`{{ .ClusterName }}`}}
     rules:
     - apiGroups: [""]
       resources: ["pods", "services", "configmaps", "secrets"]
@@ -64,16 +64,16 @@ data:
     apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
-      name: ${NAME}
-      namespace: ${NAMESPACE}
+      name: {{`{{ .Name }}`}}
+      namespace: {{`{{ .Namespace }}`}}
       labels:
         app: bmc-agent
-        cluster: ${CLUSTER_NAME}
+        cluster: {{`{{ .ClusterName }}`}}
     roleRef:
       apiGroup: rbac.authorization.k8s.io
       kind: Role
-      name: ${ROLE_NAME}
+      name: {{`{{ .RoleName }}`}}
     subjects:
     - kind: ServiceAccount
-      name: ${SERVICE_ACCOUNT_NAME}
-      namespace: ${NAMESPACE}
+      name: {{`{{ .ServiceAccountName }}`}}
+      namespace: {{`{{ .Namespace }}`}}

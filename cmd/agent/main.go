@@ -24,9 +24,9 @@ func main() {
 	log.Info("Starting BMC agent")
 
 	// Get cluster name from environment variable
-	clusterName := os.Getenv("ClusterName")
+	clusterName := os.Getenv("CLUSTER_NAME")
 	if clusterName == "" {
-		log.Error("ClusterName environment variable not set")
+		log.Error("CLUSTER_NAME environment variable not set")
 		os.Exit(1)
 	}
 	log.Infof("Running agent for cluster: %s", clusterName)

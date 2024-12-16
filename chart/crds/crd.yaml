@@ -31,45 +31,27 @@ spec:
           spec:
             description: ClusterAgentSpec defines the desired state of ClusterAgent
             properties:
+              clusterName:
+                description: Name of the cluster, must be lowercase and unique across all ClusterAgent instances
+                type: string
+                pattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]$'
               image:
-                description: Image is the agent container image
+                description: Image is the agent container image, if not set, will use AGENT_IMAGE from controller pod
                 type: string
               replicas:
-                description: Replicas is the number of agents to run
+                description: Replicas is the number of agents to run, if not set, will use 1
                 type: integer
-              clusterName:
-                description: Name of the cluster
-                type: string
-              interface:
-                description: Network interface to use
+                minimum: 0
+              underlayInterface:
+                description: Network interface to use for underlay network
                 type: string
             required:
-            - image
-            - replicas
             - clusterName
-            - interface
+            - underlayInterface
             type: object
           status:
             description: ClusterAgentStatus defines the observed state of ClusterAgent
             properties:
-              availableReplicas:
-                description: AvailableReplicas is the number of agents currently running
-                type: integer
-              lastUpdated:
-                description: LastUpdated is the last time the status was updated
-                format: date-time
-                type: string
-              allocatedIPCount:
-                description: Number of allocated IPs
-                type: integer
-              totalIPCount:
-                description: Total number of IPs
-                type: integer
-              allocatedIPs:
-                description: List of allocated IPs
-                items:
-                  type: string
-                type: array
               ready:
                 description: Whether the agent is ready
                 type: boolean
