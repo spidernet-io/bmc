@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"os"
-	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -14,12 +13,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"go.uber.org/zap/zapcore"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
 	controller "github.com/spidernet-io/bmc/pkg/controller/clusteragent"
+	"github.com/spidernet-io/bmc/pkg/log"
 	webhook "github.com/spidernet-io/bmc/pkg/webhook/clusteragent"
-
 )
 
 var (
@@ -33,6 +31,13 @@ func init() {
 }
 
 func main() {
+	// Get log level from environment variable
+	logLevel := os.Getenv("LOG_LEVEL")
+	log.InitStdoutLogger(logLevel)
+
+	// Set controller-runtime logger
+	ctrl.SetLogger(zap.New())
+
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -46,40 +51,6 @@ func main() {
 
 	flag.Parse()
 
-	// Get log level from environment variable
-	logLevel := os.Getenv("LOG_LEVEL")
-	if logLevel == "" {
-		logLevel = "debug"  // 设置默认日志级别为debug
-	}
-
-	var level int
-	switch strings.ToLower(logLevel) {
-	case "debug":
-		level = -1  // debug level
-	case "info":
-		level = 0
-	case "error":
-		level = 1
-	default:
-		level = -1  // 默认使用debug level
-	}
-
-	opts := zap.Options{
-		Development: true,
-		Level:       zapcore.Level(level),
-	}
-
-	// 设置全局logger
-	logger := zap.New(zap.UseFlagOptions(&opts))
-	ctrl.SetLogger(logger)
-
-	setupLog = logger.WithName("setup")
-	setupLog.V(0).Info("Starting controller manager",
-		"logLevel", logLevel,
-		"metricsAddr", metricsAddr,
-		"probeAddr", probeAddr,
-		"enableLeaderElection", enableLeaderElection)
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -89,7 +60,7 @@ func main() {
 		LeaderElectionID:       "bmc-controller-lock",
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		log.Logger.Errorf("unable to start manager: %v", err)
 		os.Exit(1)
 	}
 
@@ -97,29 +68,30 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ClusterAgent")
+		log.Logger.Errorf("unable to create controller %s: %v", "ClusterAgent", err)
 		os.Exit(1)
 	}
 
 	// Setup webhook
 	if err = (&webhook.ClusterAgentWebhook{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "ClusterAgent")
+		log.Logger.Errorf("unable to create webhook %s: %v", "ClusterAgent", err)
 		os.Exit(1)
 	}
 
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
+		log.Logger.Errorf("unable to set up health check: %v", err)
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
+		log.Logger.Errorf("unable to set up ready check: %v", err)
 		os.Exit(1)
 	}
 
+	log.Logger.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		log.Logger.Errorf("problem running manager: %v", err)
 		os.Exit(1)
 	}
 }

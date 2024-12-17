@@ -20,15 +20,14 @@ securityContext: {}
 
 # ClusterAgent configuration
 clusterAgent:
-  image:
-    repository: spidernet-io/bmc/agent
-    pullPolicy: IfNotPresent
-    # tag will be overridden by version from Chart.yaml
-    tag: ""
-  # Required: network interface configuration
-  underlayInterface: "kube-system/macvlan-pod-network"
-  # Required: cluster name
-  clusterName: "defaultcluster"
+  agentYaml:
+    image:
+      repository: spidernet-io/bmc/agent
+      pullPolicy: IfNotPresent
+      # tag will be overridden by version from Chart.yaml
+      tag: ""
+    # Required: network interface configuration
+    underlayInterface: "kube-system/macvlan-pod-network"
 
 # Webhook configuration
 webhook:

@@ -39,7 +39,7 @@ spec:
             - --leader-elect
           env:
             - name: AGENT_IMAGE
-              value: "{{ .Values.clusterAgent.image.repository }}:{{ .Values.clusterAgent.image.tag }}"
+              value: "{{ .Values.clusterAgent.agentYaml.image.repository }}:{{ default .Chart.Version .Values.clusterAgent.agentYaml.image.tag }}"
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:

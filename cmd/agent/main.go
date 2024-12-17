@@ -7,43 +7,39 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"github.com/spidernet-io/bmc/pkg/log"
 
-	"go.uber.org/zap"
 )
 
 func main() {
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		fmt.Printf("Failed to create logger: %v\n", err)
-		os.Exit(1)
-	}
-	defer logger.Sync()
-	log := logger.Sugar()
+	// Get log level from environment variable
+	logLevel := os.Getenv("LOG_LEVEL")
+	log.InitStdoutLogger(logLevel)
 
-	log.Info("Starting BMC agent")
+
+	log.Logger.Infof("Starting BMC agent")
 
 	// Get cluster name from environment variable
 	clusterName := os.Getenv("CLUSTER_NAME")
 	if clusterName == "" {
-		log.Error("CLUSTER_NAME environment variable not set")
+		log.Logger.Errorf("CLUSTER_NAME environment variable not set")
 		os.Exit(1)
 	}
-	log.Infof("Running agent for cluster: %s", clusterName)
+	log.Logger.Infof("Running agent for cluster: %s", clusterName)
 
 	// Setup HTTP server for health checks
 	mux := http.NewServeMux()
 
 	// Health check endpoint
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		log.Debug("Health check request received")
+		log.Logger.Debugf("Health check request received")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "healthy")
 	})
 
 	// Readiness check endpoint
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		log.Debug("Readiness check request received")
+		log.Logger.Debugf("Readiness check request received")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ready")
 	})
@@ -55,9 +51,9 @@ func main() {
 
 	// Start HTTP server in a goroutine
 	go func() {
-		log.Info("Starting health check server on :8000")
+		log.Logger.Info("Starting health check server on :8000")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Errorf("Health check server failed: %v", err)
+			log.Logger.Errorf("Health check server failed: %v", err)
 			os.Exit(1)
 		}
 	}()
@@ -73,9 +69,9 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
-			log.Debug("Agent still running...")
+			log.Logger.Debugf("Agent still running...")
 		case sig := <-sigChan:
-			log.Infof("Received signal %v, shutting down...", sig)
+			log.Logger.Infof("Received signal %v, shutting down...", sig)
 			return
 		}
 	}

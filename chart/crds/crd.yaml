@@ -31,23 +31,25 @@ spec:
           spec:
             description: ClusterAgentSpec defines the desired state of ClusterAgent
             properties:
-              clusterName:
-                description: Name of the cluster, must be lowercase and unique across all ClusterAgent instances
-                type: string
-                pattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]$'
-              image:
-                description: Image is the agent container image, if not set, will use AGENT_IMAGE from controller pod
-                type: string
-              replicas:
-                description: Replicas is the number of agents to run, if not set, will use 1
-                type: integer
-                minimum: 0
-              underlayInterface:
-                description: Network interface to use for underlay network
-                type: string
+              agentYaml:
+                description: AgentConfig defines the configuration for the agent
+                type: object
+                properties:
+                  image:
+                    description: Image is the agent container image
+                    type: string
+                  replicas:
+                    description: Replicas is the number of agents to run
+                    type: integer
+                    default: 1
+                    minimum: 0
+                  underlayInterface:
+                    description: UnderlayInterface specifies the network interface configuration for underlay network
+                    type: string
+                required:
+                - underlayInterface
             required:
-            - clusterName
-            - underlayInterface
+            - agentYaml
             type: object
           status:
             description: ClusterAgentStatus defines the observed state of ClusterAgent
@@ -59,5 +61,12 @@ spec:
         type: object
     served: true
     storage: true
+    additionalPrinterColumns:
+    - name: READY
+      type: boolean
+      jsonPath: .status.ready
+    - name: AGE
+      type: date
+      jsonPath: .metadata.creationTimestamp
     subresources:
       status: {}

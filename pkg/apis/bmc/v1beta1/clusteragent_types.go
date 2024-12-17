@@ -7,17 +7,22 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="READY",type="boolean",JSONPath=".status.ready"
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ClusterAgentSpec defines the desired state of ClusterAgent
 type ClusterAgentSpec struct {
+	// AgentYaml contains the agent configuration
+	// +kubebuilder:validation:Required
+	AgentYaml AgentConfig `json:"agentYaml"`
+}
+
+// AgentConfig defines the configuration for the agent
+type AgentConfig struct {
 	// UnderlayInterface specifies the network interface configuration for underlay network
 	// +kubebuilder:validation:Required
 	UnderlayInterface string `json:"underlayInterface"`
-
-	// ClusterName specifies the name of the cluster
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=^[a-z0-9][a-z0-9-]*[a-z0-9]$
-	ClusterName string `json:"clusterName"`
 
 	// Image is the agent container image
 	// +optional
