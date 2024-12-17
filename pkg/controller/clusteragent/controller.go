@@ -148,6 +148,8 @@ func (r *ClusterAgentReconciler) createOrUpdateResources(ctx context.Context, cl
 		ServiceAccountName: name,
 		RoleName:          name,
 		UnderlayInterface:  clusterAgent.Spec.AgentYaml.UnderlayInterface,
+		NodeAffinity:      clusterAgent.Spec.AgentYaml.NodeAffinity,
+		NodeName:          clusterAgent.Spec.AgentYaml.NodeName,
 	}
 
 	// Render resources from template

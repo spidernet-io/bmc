@@ -46,6 +46,130 @@ spec:
                   underlayInterface:
                     description: UnderlayInterface specifies the network interface configuration for underlay network
                     type: string
+                  nodeAffinity:
+                    description: NodeAffinity defines scheduling constraints for the agent pods
+                    type: object
+                    properties:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        description: The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions.
+                        type: array
+                        items:
+                          description: An empty preferred scheduling term matches all objects with implicit weight 0
+                          type: object
+                          required:
+                            - preference
+                            - weight
+                          properties:
+                            preference:
+                              description: A node selector term, associated with the corresponding weight.
+                              type: object
+                              properties:
+                                matchExpressions:
+                                  description: A list of node selector requirements by node's labels.
+                                  type: array
+                                  items:
+                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    type: object
+                                    required:
+                                      - key
+                                      - operator
+                                    properties:
+                                      key:
+                                        description: The label key that the selector applies to.
+                                        type: string
+                                      operator:
+                                        description: Represents a key's relationship to a set of values.
+                                        type: string
+                                      values:
+                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty.
+                                        type: array
+                                        items:
+                                          type: string
+                                matchFields:
+                                  description: A list of node selector requirements by node's fields.
+                                  type: array
+                                  items:
+                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    type: object
+                                    required:
+                                      - key
+                                      - operator
+                                    properties:
+                                      key:
+                                        description: The label key that the selector applies to.
+                                        type: string
+                                      operator:
+                                        description: Represents a key's relationship to a set of values.
+                                        type: string
+                                      values:
+                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty.
+                                        type: array
+                                        items:
+                                          type: string
+                            weight:
+                              description: Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.
+                              type: integer
+                              format: int32
+                              minimum: 1
+                              maximum: 100
+                      requiredDuringSchedulingIgnoredDuringExecution:
+                        description: If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node.
+                        type: object
+                        required:
+                          - nodeSelectorTerms
+                        properties:
+                          nodeSelectorTerms:
+                            description: Required. A list of node selector terms. The terms are ORed.
+                            type: array
+                            items:
+                              description: A null or empty node selector term matches no objects.
+                              type: object
+                              properties:
+                                matchExpressions:
+                                  description: A list of node selector requirements by node's labels.
+                                  type: array
+                                  items:
+                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    type: object
+                                    required:
+                                      - key
+                                      - operator
+                                    properties:
+                                      key:
+                                        description: The label key that the selector applies to.
+                                        type: string
+                                      operator:
+                                        description: Represents a key's relationship to a set of values.
+                                        type: string
+                                      values:
+                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty.
+                                        type: array
+                                        items:
+                                          type: string
+                                matchFields:
+                                  description: A list of node selector requirements by node's fields.
+                                  type: array
+                                  items:
+                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    type: object
+                                    required:
+                                      - key
+                                      - operator
+                                    properties:
+                                      key:
+                                        description: The label key that the selector applies to.
+                                        type: string
+                                      operator:
+                                        description: Represents a key's relationship to a set of values.
+                                        type: string
+                                      values:
+                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty.
+                                        type: array
+                                        items:
+                                          type: string
+                  nodeName:
+                    description: NodeName is a request to schedule this pod onto a specific node
+                    type: string
                 required:
                 - underlayInterface
             required:

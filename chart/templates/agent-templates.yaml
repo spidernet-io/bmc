@@ -29,6 +29,14 @@ data:
             k8s.v1.cni.cncf.io/networks: {{`{{ .UnderlayInterface }}`}}
         spec:
           serviceAccountName: {{`{{ .ServiceAccountName }}`}}
+          {{`{{ if .NodeAffinity }}`}}
+          affinity:
+            nodeAffinity:
+              {{`{{ toYaml .NodeAffinity }}`}}
+          {{`{{ end }}`}}
+          {{`{{ if .NodeName }}`}}
+          nodeName: {{`{{ .NodeName }}`}}
+          {{`{{ end }}`}}
           containers:
           - name: agent
             image: {{`{{ .Image }}`}}

@@ -11,3 +11,10 @@ spec:
     replicas: {{ .Values.clusterAgent.agentYaml.replicas }}
     image: "{{ .Values.clusterAgent.agentYaml.image.repository }}:{{ default .Chart.Version .Values.clusterAgent.agentYaml.image.tag }}"
     underlayInterface: "{{ .Values.clusterAgent.agentYaml.underlayInterface }}"
+    {{- with .Values.clusterAgent.agentYaml.nodeAffinity }}
+    nodeAffinity:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- if .Values.clusterAgent.agentYaml.nodeName }}
+    nodeName: {{ .Values.clusterAgent.agentYaml.nodeName }}
+    {{- end }}

@@ -34,7 +34,6 @@ metadata:
 spec:
   agentYaml:
     underlayInterface: “kube-system/macvlan-pod-network”
-    clusterName: "cluster1"
     image: ""
     replicas: 1
     nodeAffinity
@@ -56,7 +55,6 @@ status:
 
 并且 ， helm 默认安装了一个 clusterAgent 的 cr 实例， 实例中 spec 的各个字段，基于 helm 的 values 中的配置进行填充，其中，
     spec.agentYaml.underlayInterface 是一个必写字段， helm values 默认为空， 
-    spec.agentYaml.clusterName 是一个必写字段， helm values  默认为 "defaultCluster"
     spec.agentYaml.replicas 是一个可选字段， 默认 helm values 为 1
     spec.agentYaml.image 是一个可选字段，由 相应的 helm values 来渲染，该来渲染，该 value 由 两部分组成，image.repository 默认为 spidernet-io/bmc/agent， image.tag 默认使用 chart.yaml 中的 version
 
@@ -72,7 +70,7 @@ status:
 - 在 helm 的 chart 中 ，使用 configmap 来存储  agent 的 deployment 和 其对应的 role/rolebinding serviceaccount 的 yaml 目标，该 configmap 挂载到 controller pod 中， controller 的 golang 代码程序 基于 
 该 yaml 模板 来渲染生成 agent 实例
 
-- agent 组件 的  deployment 的 实例名， 为  "agent" + crd clusterAgent 的 spec.agentYaml.clusterName
+- agent 组件 的  deployment 的 实例名， 为  "agent" + crd clusterAgent 的 metadata.name 
 
 - agent 组件 的  deployment 的租户，与controller pod 相同  
 
@@ -87,7 +85,7 @@ status:
 - 基于 crd clusterAgent 中的 spec.agentYaml.underlayInterface 的值， 设置  agent 组件 的 deployment 的 annotation 中带有如下
 k8s.v1.cni.cncf.io/networks: "k8s.v1.cni.cncf.io/networks"
 
-- 基于 crd clusterAgent 中的 spec.agentYaml.clusterName 的值， 该 agent 组件 的 deployment 注入 环境变量，环境变量的 key  为 ClusterName， 环境变量的值为 spec.agentYaml.clusterName
+- 基于 crd clusterAgent 中的 meta.name 的值， 该 agent 组件 的 deployment 注入 环境变量，环境变量的 key  为 ClusterName， 环境变量的值为 meta.Name
 
 - controller 的进程能够 监控 每个  crd clusterAgent 对应的 deployment 实例的状态，如果它的所有 pod 是 running 的，那么就 标记 CRD clusterAgent 中的 status.ready=true， 否则 status.ready=false
 
@@ -103,7 +101,6 @@ k8s.v1.cni.cncf.io/networks: "k8s.v1.cni.cncf.io/networks"
 
 5.  在 controller 代码中，添加对于 ClusterAgent crd 实例的 webhook 逻辑
 - helm 自动创建相关的 service、webhook，使用 helm 为 webhook 注入 100 年可用的 tls 证书
-- ClusterAgent 的 spec.agentYaml.clusterName 是必填字段 。 controller 对 ClusterAgent 的 spec.agentYaml.clusterName 进行校验，其必须是小写的，其字符串必须可用来命名 k8s 中任何对象的 name 的  , 并且，在所有 ClusterAgent 实例中，它们的 spec.clusterName 必须是不相互冲突的，确保唯一
 - ClusterAgent 的 spec.agentYaml.image 是可选字段，如果创建的 cr 有该值，则使用它， 如果 没有， webhhook 对其修改，设置为 controller pod 的 yaml 中的 环境变量 AGENT_IMAGE , 该 环境变量的值 来自与 helm values 中的 clusterAgent.image.repository 和 clusterAgent.image.tag 的 渲染 
 - ClusterAgent 的 spec.agentYaml.replicas 是可选字段，如果创建的 cr 有该值，则使用它, 但必须是一个 大于等于 0 的数字， 如果 没有， webhhook 对其修改，设置为 1 
 - ClusterAgent 的 spec.agentYaml.underlayInterface 是必填字段

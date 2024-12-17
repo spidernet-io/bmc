@@ -28,6 +28,18 @@ clusterAgent:
       tag: ""
     # Required: network interface configuration
     underlayInterface: "kube-system/macvlan-pod-network"
+    # Optional: Node scheduling configuration
+    # Option 1: Use nodeAffinity for flexible node selection
+    # nodeAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     nodeSelectorTerms:
+    #     - matchExpressions:
+    #       - key: kubernetes.io/hostname
+    #         operator: In
+    #         values:
+    #         - worker-1
+    # Option 2: Use nodeName for direct node assignment
+    nodeName: ""
 
 # Webhook configuration
 webhook:

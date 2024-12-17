@@ -3,7 +3,24 @@ kind: ClusterAgent
 metadata:
   name: test-clusteragent
 spec:
-  image: spidernet-io/bmc/agent:v0.0.1
-  replicas: 1
-  clusterName: uppercase-cluster
-  underlayInterface: kube-system/macvlan-pod-network
+  agentYaml:
+    underlayInterface: kube-system/macvlan-pod-network
+    image: spidernet-io/bmc/agent:v0.0.1
+    replicas: 1
+    # Optional: Node affinity configuration
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - worker-1
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+          - key: node-role.kubernetes.io/worker
+            operator: In
+            values:
+            - "true"

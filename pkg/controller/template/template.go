@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 
 	"github.com/spidernet-io/bmc/pkg/log"
@@ -19,11 +20,23 @@ type TemplateData struct {
 	Name              string
 	Namespace         string
 	ClusterName       string
-	Image            string
-	Replicas         int32
-	UnderlayInterface string
+	Image             string
+	Replicas          int32
 	ServiceAccountName string
-	RoleName string
+	RoleName          string
+	UnderlayInterface string
+	NodeAffinity      *v1.NodeAffinity
+	NodeName          string
+}
+
+// toYaml takes an interface, marshals it to yaml, and returns a string
+func toYaml(v interface{}) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return string(data)
 }
 
 // RenderTemplate reads a template file and renders it with the given data
@@ -39,7 +52,11 @@ func RenderTemplate(templateName string, data *TemplateData) (*unstructured.Unst
 
 	log.Logger.Debugf("Template file read successfully: %s (size: %d)", templatePath, len(templateContent))
 
-	tmpl, err := template.New(templateName).Parse(string(templateContent))
+	funcMap := template.FuncMap{
+		"toYaml": toYaml,
+	}
+
+	tmpl, err := template.New(templateName).Funcs(funcMap).Parse(string(templateContent))
 	if err != nil {
 		log.Logger.Errorf("Failed to parse template %s: %v", templateName, err)
 		return nil, fmt.Errorf("failed to parse template %s: %v", templateName, err)

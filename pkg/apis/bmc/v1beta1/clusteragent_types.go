@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,6 +34,14 @@ type AgentConfig struct {
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=0
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// NodeAffinity defines scheduling constraints for the agent pods
+	// +optional
+	NodeAffinity *corev1.NodeAffinity `json:"nodeAffinity,omitempty"`
+
+	// NodeName is a request to schedule this pod onto a specific node
+	// +optional
+	NodeName string `json:"nodeName,omitempty"`
 }
 
 // ClusterAgentStatus defines the observed state of ClusterAgent

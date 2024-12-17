@@ -61,11 +61,11 @@
 
 因此，使用如下方式 进行代码 
 
-1 可以通过 ssh 方式 登录 如下 linux 调试主机 
+1 可以通过 sshpass 方式 登录 如下 linux 调试主机 
    10.20.1.20 ， 用户名 root ， 密码 lanwz
     切换到 工程目录下  /home/welan/bmc
 
-2 在远程主机上，构建镜像构建
+2 在远程主机上，构建镜像构建 make images
     请基于本工程的 makefile 中的能力，在 调试主机上构建所有的工程镜像 ，在尽可能不改变 其它逻辑和优化情况下， 不断地修改代码修复bug，确保镜像构建成功
     期间，如果要进行 go mod 库同步，请配置如下环境变量 
     export GOPROXY=https://goproxy.io
