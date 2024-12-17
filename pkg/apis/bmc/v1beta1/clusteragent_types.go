@@ -17,6 +17,14 @@ type ClusterAgentSpec struct {
 	// AgentYaml contains the agent configuration
 	// +kubebuilder:validation:Required
 	AgentYaml AgentConfig `json:"agentYaml"`
+
+	// Endpoint contains the endpoint configuration
+	// +optional
+	Endpoint *EndpointConfig `json:"endpoint,omitempty"`
+
+	// Feature contains the feature configuration
+	// +optional
+	Feature *FeatureConfig `json:"feature,omitempty"`
 }
 
 // AgentConfig defines the configuration for the agent
@@ -30,10 +38,9 @@ type AgentConfig struct {
 	Image string `json:"image,omitempty"`
 
 	// Replicas is the number of agents to run
-	// +optional
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=0
-	Replicas *int32 `json:"replicas,omitempty"`
+	Replicas *int32 `json:"replicas"`
 
 	// NodeAffinity defines scheduling constraints for the agent pods
 	// +optional
@@ -42,6 +49,50 @@ type AgentConfig struct {
 	// NodeName is a request to schedule this pod onto a specific node
 	// +optional
 	NodeName string `json:"nodeName,omitempty"`
+}
+
+// EndpointConfig defines the endpoint configuration for the agent
+type EndpointConfig struct {
+	// Port is the endpoint port
+	// +kubebuilder:default=443
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	Port int32 `json:"port,omitempty"`
+
+	// SecretName is the name of the secret containing the TLS certificates
+	// +optional
+	SecretName string `json:"secretName,omitempty"`
+
+	// SecretNamespace is the namespace of the secret containing the TLS certificates
+	// +optional
+	SecretNamespace string `json:"secretNamespace,omitempty"`
+
+	// HTTPS enables HTTPS for the endpoint
+	// +kubebuilder:default=true
+	HTTPS bool `json:"https,omitempty"`
+}
+
+// FeatureConfig defines the feature configuration for the agent
+type FeatureConfig struct {
+	// EnableDhcpServer enables the DHCP server
+	// +kubebuilder:default=true
+	EnableDhcpServer bool `json:"enableDhcpServer,omitempty"`
+
+	// EnableDhcpDiscovery enables DHCP discovery
+	// +kubebuilder:default=true
+	EnableDhcpDiscovery bool `json:"enableDhcpDiscovery,omitempty"`
+
+	// DhcpServerInterface specifies the interface for DHCP server
+	// +kubebuilder:default="net1"
+	DhcpServerInterface string `json:"dhcpServerInterface,omitempty"`
+
+	// RedfishMetrics enables redfish metrics collection
+	// +kubebuilder:default=false
+	RedfishMetrics bool `json:"redfishMetrics,omitempty"`
+
+	// EnableGuiProxy enables GUI proxy
+	// +kubebuilder:default=true
+	EnableGuiProxy bool `json:"enableGuiProxy,omitempty"`
 }
 
 // ClusterAgentStatus defines the observed state of ClusterAgent

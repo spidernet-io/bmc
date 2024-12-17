@@ -30,6 +30,7 @@ spec:
             type: object
           spec:
             description: ClusterAgentSpec defines the desired state of ClusterAgent
+            type: object
             properties:
               agentYaml:
                 description: AgentConfig defines the configuration for the agent
@@ -172,11 +173,70 @@ spec:
                     type: string
                 required:
                 - underlayInterface
+                - image
+                - replicas
+                type: object
+              endpoint:
+                description: EndpointConfig defines the endpoint configuration for the agent
+                type: object
+                properties:
+                  port:
+                    description: Port is the endpoint port
+                    type: integer
+                    default: 443
+                    minimum: 1
+                    maximum: 65535
+                  secretName:
+                    description: SecretName is the name of the secret containing the TLS certificates
+                    type: string
+                  secretNamespace:
+                    description: SecretNamespace is the namespace of the secret containing the TLS certificates
+                    type: string
+                  https:
+                    description: HTTPS enables HTTPS for the endpoint
+                    type: boolean
+                    default: true
+                required:
+                - port
+                - https
+                type: object
+              feature:
+                description: FeatureConfig defines the feature configuration for the agent
+                type: object
+                properties:
+                  enableDhcpServer:
+                    description: EnableDhcpServer enables the DHCP server
+                    type: boolean
+                    default: true
+                  enableDhcpDiscovery:
+                    description: EnableDhcpDiscovery enables DHCP discovery
+                    type: boolean
+                    default: true
+                  dhcpServerInterface:
+                    description: DhcpServerInterface specifies the interface for DHCP server
+                    type: string
+                    default: "net1"
+                  redfishMetrics:
+                    description: RedfishMetrics enables redfish metrics collection
+                    type: boolean
+                    default: false
+                  enableGuiProxy:
+                    description: EnableGuiProxy enables GUI proxy
+                    type: boolean
+                    default: true
+                required:
+                - enableDhcpServer
+                - enableDhcpDiscovery
+                - dhcpServerInterface
+                - redfishMetrics
+                - enableGuiProxy
+                type: object
             required:
             - agentYaml
             type: object
           status:
             description: ClusterAgentStatus defines the observed state of ClusterAgent
+            type: object
             properties:
               ready:
                 description: Whether the agent is ready

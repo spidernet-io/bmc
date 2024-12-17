@@ -1,0 +1,9 @@
+apiVersion: bmc.spidernet.io/v1beta1
+kind: ClusterAgent
+metadata:
+  name: bmc-clusteragent
+spec:
+  agentYaml:
+    image: spidernet-io/bmc/agent:6b6dc94
+    replicas: 1
+    underlayInterface: kube-system/macvlan-pod-network

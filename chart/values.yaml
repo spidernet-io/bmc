@@ -40,6 +40,29 @@ clusterAgent:
     #         - worker-1
     # Option 2: Use nodeName for direct node assignment
     nodeName: ""
+  
+  # Optional: Endpoint configuration
+  endpoint:
+    # Port for the endpoint (default: 443)
+    port: 443
+    # Enable HTTPS (default: true)
+    https: true
+    # Optional: TLS certificate configuration
+    # secretName: ""
+    # secretNamespace: ""
+
+  # Optional: Feature configuration
+  feature:
+    # Enable DHCP server (default: true)
+    enableDhcpServer: true
+    # Enable DHCP discovery (default: true)
+    enableDhcpDiscovery: true
+    # DHCP server interface (default: net1)
+    dhcpServerInterface: "net1"
+    # Enable Redfish metrics collection (default: false)
+    redfishMetrics: false
+    # Enable GUI proxy (default: true)
+    enableGuiProxy: true
 
 # Webhook configuration
 webhook:

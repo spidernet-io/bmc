@@ -18,3 +18,22 @@ spec:
     {{- if .Values.clusterAgent.agentYaml.nodeName }}
     nodeName: {{ .Values.clusterAgent.agentYaml.nodeName }}
     {{- end }}
+  {{- with .Values.clusterAgent.endpoint }}
+  endpoint:
+    port: {{ .port }}
+    https: {{ .https }}
+    {{- if .secretName }}
+    secretName: {{ .secretName }}
+    {{- end }}
+    {{- if .secretNamespace }}
+    secretNamespace: {{ .secretNamespace }}
+    {{- end }}
+  {{- end }}
+  {{- with .Values.clusterAgent.feature }}
+  feature:
+    enableDhcpServer: {{ .enableDhcpServer }}
+    enableDhcpDiscovery: {{ .enableDhcpDiscovery }}
+    dhcpServerInterface: {{ .dhcpServerInterface }}
+    redfishMetrics: {{ .redfishMetrics }}
+    enableGuiProxy: {{ .enableGuiProxy }}
+  {{- end }}
