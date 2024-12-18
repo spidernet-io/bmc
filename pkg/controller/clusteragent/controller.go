@@ -185,19 +185,36 @@ func (r *ClusterAgentReconciler) createOrUpdateResources(ctx context.Context, cl
 // - error: any error that occurred during the update
 // - bool: true if status was changed, false otherwise
 func (r *ClusterAgentReconciler) updateStatus(ctx context.Context, clusterAgent *bmcv1beta1.ClusterAgent, logger *zap.SugaredLogger) (error, bool) {
+	// Default to not ready
+	ready := false
 	deployment := &appsv1.Deployment{}
 	err := r.Get(ctx, client.ObjectKey{
 		Namespace: GlobalControllerNS,
 		Name:      fmt.Sprintf("agent-%s", clusterAgent.Name),
 	}, deployment)
 
-	if err != nil {
-		return fmt.Errorf("failed to get deployment: %v", err), false
+	// Only set ready=true if:
+	// 1. Deployment exists
+	// 2. All replicas are ready
+	// 3. All replicas are updated
+	// 4. No error conditions present
+	if err == nil &&
+		deployment.Status.Replicas > 0 &&
+		deployment.Status.ReadyReplicas == deployment.Status.Replicas &&
+		deployment.Status.UpdatedReplicas == deployment.Status.Replicas &&
+		deployment.Status.AvailableReplicas == deployment.Status.Replicas &&
+		len(deployment.Status.Conditions) > 0 {
+		// Check if deployment is truly available
+		for _, condition := range deployment.Status.Conditions {
+			if condition.Type == appsv1.DeploymentAvailable &&
+				condition.Status == corev1.ConditionTrue {
+				ready = true
+				break
+			}
+		}
 	}
 
-	ready := deployment.Status.ReadyReplicas == deployment.Status.Replicas &&
-		deployment.Status.UpdatedReplicas == deployment.Status.Replicas
-
+	// Update status if it has changed
 	if ready != clusterAgent.Status.Ready {
 		clusterAgent.Status.Ready = ready
 		if err := r.Status().Update(ctx, clusterAgent); err != nil {

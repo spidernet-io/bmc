@@ -34,7 +34,8 @@ deploy:
 	@GIT_HASH=$$(git rev-parse --short HEAD); \
 	helm upgrade --install bmc ../chart --namespace bmc --create-namespace \
 		--set image.tag=$$GIT_HASH \
-		--set clusterAgent.agentYaml.image.tag=$$GIT_HASH
+		--set clusterAgent.agentYaml.image.tag=$$GIT_HASH \
+		--set clusterAgent.endpoint.https=false
 
 # Clean up kind cluster
 clean:
