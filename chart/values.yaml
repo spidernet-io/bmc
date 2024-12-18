@@ -5,7 +5,7 @@ replicaCount: 1
 logLevel: "debug"
 
 image:
-  repository: spidernet-io/bmc/controller
+  repository: ghcr.io/spidernet-io/bmc-controller
   pullPolicy: IfNotPresent
   # tag will be overridden by version from Chart.yaml
   tag: ""
@@ -22,7 +22,7 @@ securityContext: {}
 clusterAgent:
   agentYaml:
     image:
-      repository: spidernet-io/bmc/agent
+      repository: ghcr.io/spidernet-io/bmc-agent
       pullPolicy: IfNotPresent
       # tag will be overridden by version from Chart.yaml
       tag: ""

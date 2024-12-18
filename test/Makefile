@@ -1,4 +1,7 @@
-.PHONY: init deploy clean
+# Include common definitions
+include ../Makefile.def
+
+.PHONY: init installDeps deploy installDepsRedfish clean
 
 # Kind cluster configuration
 KIND_CLUSTER_NAME ?= bmc-e2e
@@ -23,19 +26,34 @@ init:
 	@rm -f $(KIND_CONFIG)
 	@echo "Kind cluster created successfully"
 
+
+installDeps:
+	@echo "Installing spiderpool..."
+	chmod +x scripts/install-spiderpool.sh
+	E2E_CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./scripts/install-spiderpool.sh
+
+installDepsRedfish:
+	@echo "Installing redfish..."
+	chmod +x scripts/install-redfish.sh
+	E2E_CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./scripts/install-redfish.sh
+
+
 # Deploy application to kind cluster
 deploy:
 	@echo "Loading images into kind cluster..."
-	@GIT_HASH=$$(git rev-parse --short HEAD); \
-	kind load docker-image spidernet-io/bmc/controller:$$GIT_HASH --name $(KIND_CLUSTER_NAME) && \
-	kind load docker-image spidernet-io/bmc/agent:$$GIT_HASH --name $(KIND_CLUSTER_NAME)
+	kind load docker-image $(CONTROLLER_IMAGE_REF) --name $(KIND_CLUSTER_NAME) && \
+	kind load docker-image $(AGENT_IMAGE_REF) --name $(KIND_CLUSTER_NAME)
 	@echo "Images loaded successfully"
 	@echo "Deploying application using Helm chart..."
-	@GIT_HASH=$$(git rev-parse --short HEAD); \
-	helm upgrade --install bmc ../chart --namespace bmc --create-namespace \
-		--set image.tag=$$GIT_HASH \
-		--set clusterAgent.agentYaml.image.tag=$$GIT_HASH \
-		--set clusterAgent.endpoint.https=false
+	helm install bmc ../chart \
+		--set image.repository=$(CONTROLLER_IMAGE) \
+		--set image.tag=$(VERSION) \
+		--set clusterAgent.agentYaml.image.repository=$(AGENT_IMAGE) \
+		--set clusterAgent.agentYaml.image.tag=$(VERSION) \
+		--set clusterAgent.endpoint.https=false \
+		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
+		--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker"
+
 
 # Clean up kind cluster
 clean:

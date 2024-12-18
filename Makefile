@@ -1,6 +1,12 @@
+# Include common definitions
+include Makefile.def
+
 # Version and image registry configuration
 VERSION ?= $(shell git rev-parse --short HEAD)
-REGISTRY ?= spidernet-io/bmc
+REGISTRY ?= ghcr.io/spidernet-io
+IMAGE_NAMESPACE ?= bmc
+TOOLS_IMAGE_NAME ?= tools
+TOOLS_IMAGE_TAG ?= latest
 
 # Go build configuration
 GOOS ?= linux
@@ -28,15 +34,22 @@ build-agent:
 
 # Image targets
 .PHONY: images
-images: controller-image agent-image
+images: controller-image agent-image tools-image
 
 .PHONY: controller-image
 controller-image:
-	docker build -t $(REGISTRY)/controller:$(VERSION) -f image/controller/Dockerfile .
+	docker build -t $(CONTROLLER_IMAGE_REF) -f image/controller/Dockerfile .
 
 .PHONY: agent-image
 agent-image:
-	docker build -t $(REGISTRY)/agent:$(VERSION) -f image/agent/Dockerfile .
+	docker build -t $(AGENT_IMAGE_REF) -f image/agent/Dockerfile .
+
+.PHONY: tools-image
+tools-image: build-tools-image
+
+.PHONY: build-tools-image
+build-tools-image:
+	docker build -t $(TOOLS_IMAGE_REF) -f image/tools/Dockerfile image/tools
 
 # Helm chart
 .PHONY: chart
@@ -51,7 +64,9 @@ e2e:
 	@echo "Setting up E2E test environment..."
 	$(MAKE) -C test clean
 	$(MAKE) -C test init
+	$(MAKE) -C test installDeps
 	$(MAKE) -C test deploy
+	$(MAKE) -C test installDepsRedfish
 	@echo "E2E environment setup completed"
 
 # Clean up E2E environment
@@ -83,6 +98,7 @@ usage:
 	@echo "  images          - Build container images"
 	@echo "  controller-image - Build controller container image"
 	@echo "  agent-image     - Build agent container image"
+	@echo "  tools-image     - Build tools container image"
 	@echo "  chart           - Package Helm chart"
 	@echo "  e2e             - Run E2E tests"
 	@echo "  e2e-clean       - Clean up E2E environment"
@@ -92,7 +108,10 @@ usage:
 	@echo ""
 	@echo "Environment variables:"
 	@echo "  VERSION        - Version tag for images (default: from git commit hash)"
-	@echo "  REGISTRY       - Container image registry (default: spidernet-io/bmc)"
+	@echo "  REGISTRY       - Container image registry (default: ghcr.io/spidernet-io)"
+	@echo "  IMAGE_NAMESPACE - Container image namespace for tools (default: bmc)"
+	@echo "  TOOLS_IMAGE_NAME - Name of the tools image (default: tools)"
+	@echo "  TOOLS_IMAGE_TAG - Tag of the tools image (default: latest)"
 	@echo "  GOOS          - Target OS for build (default: linux)"
 	@echo "  GOARCH        - Target architecture for build (default: amd64)"
 	@echo "  CGO_ENABLED   - Enable CGO for build (default: 0)"
