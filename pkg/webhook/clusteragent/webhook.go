@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -255,9 +256,32 @@ func (w *ClusterAgentWebhook) validateClusterAgent(ctx context.Context, clusterA
 			return fmt.Errorf("invalid gateway format: %s", config.Gateway)
 		}
 
-		if config.SelfIp != "" && !ipRegex.MatchString(config.SelfIp) {
-			logger.Error("invalid selfIp format")
-			return fmt.Errorf("invalid selfIp format: %s", config.SelfIp)
+		// Validate selfIp format (must be CIDR format)
+		if config.SelfIp != "" {
+			// Validate CIDR format
+			if !subnetRegex.MatchString(config.SelfIp) {
+				logger.Error("invalid selfIp format, must be in CIDR format (e.g., 192.168.0.2/24)")
+				return fmt.Errorf("invalid selfIp format: %s, must be in CIDR format (e.g., 192.168.0.2/24)", config.SelfIp)
+			}
+
+			// Extract and compare subnet masks
+			subnetMask, err := extractCIDRMask(config.Subnet)
+			if err != nil {
+				logger.Error("failed to extract mask from subnet")
+				return fmt.Errorf("failed to extract mask from subnet: %v", err)
+			}
+
+			selfIpMask, err := extractCIDRMask(config.SelfIp)
+			if err != nil {
+				logger.Error("failed to extract mask from selfIp")
+				return fmt.Errorf("failed to extract mask from selfIp: %v", err)
+			}
+
+			// Ensure masks are identical
+			if subnetMask != selfIpMask {
+				logger.Error("subnet and selfIp must have the same network mask")
+				return fmt.Errorf("subnet (%s) and selfIp (%s) must have the same network mask", config.Subnet, config.SelfIp)
+			}
 		}
 	}
 
@@ -287,6 +311,14 @@ func validateClusterName(name string) error {
 
 func isLowerCase(s string) bool {
 	return regexp.MustCompile(`^[a-z0-9][a-z0-9-]*[a-z0-9]$`).MatchString(s)
+}
+
+func extractCIDRMask(cidr string) (string, error) {
+	parts := strings.Split(cidr, "/")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid CIDR format: %s", cidr)
+	}
+	return parts[1], nil
 }
 
 // +kubebuilder:webhook:path=/validate-bmc-spidernet-io-v1beta1-clusteragent,mutating=true,failurePolicy=fail,sideEffects=None,groups=bmc.spidernet.io,resources=clusteragents,verbs=create;update,versions=v1beta1,name=vclusteragent.kb.io,admissionReviewVersions=v1

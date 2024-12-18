@@ -68,7 +68,7 @@ clusterAgent:
       # Gateway for DHCP server (required)
       gateway: "192.168.0.1"
       # Self IP for DHCP server (optional)
-      selfIp: "192.168.0.2"
+      selfIp: "192.168.0.2/24"
     # Enable Redfish metrics collection (default: false)
     redfishMetrics: false
     # Enable GUI proxy (default: true)

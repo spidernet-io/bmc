@@ -14,6 +14,14 @@ RUN make build-agent
 # Final stage
 FROM ubuntu:24.10
 
+# Install dhcpd binary
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    isc-dhcp-server \
+    iproute2 \
+    isc-dhcp-client \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /
 # Copy the binary from builder stage
 COPY --from=builder /workspace/bin/agent /usr/local/bin/

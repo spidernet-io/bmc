@@ -11,6 +11,7 @@ import (
 
 	"github.com/spidernet-io/bmc/pkg/agent/config"
 	"github.com/spidernet-io/bmc/pkg/agent/server"
+	"github.com/spidernet-io/bmc/pkg/dhcpserver"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -55,6 +56,18 @@ func main() {
 		}
 	}()
 
+	// Initialize DHCP server if enabled
+	var dhcpSrv dhcpserver.DhcpServer
+	if agentConfig.AgentObjSpec.Feature.EnableDhcpServer {
+		log.Logger.Info("Starting DHCP server...")
+		dhcpSrv = dhcpserver.NewDhcpServer(agentConfig.AgentObjSpec.Feature.DhcpServerConfig)
+		if err := dhcpSrv.Start(); err != nil {
+			log.Logger.Errorf("Failed to start DHCP server: %v", err)
+			os.Exit(1)
+		}
+		log.Logger.Info("DHCP server started successfully")
+	}
+
 	// Setup signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
@@ -69,6 +82,15 @@ func main() {
 			log.Logger.Debug("Agent still running...")
 		case sig := <-sigChan:
 			log.Logger.Infof("Received signal %v, shutting down...", sig)
+			
+			// Stop DHCP server if it was started
+			if dhcpSrv != nil {
+				log.Logger.Info("Stopping DHCP server...")
+				if err := dhcpSrv.Stop(); err != nil {
+					log.Logger.Errorf("Error stopping DHCP server: %v", err)
+				}
+			}
+
 			// Graceful shutdown of HTTP server
 			if err := srv.Shutdown(context.Background()); err != nil {
 				log.Logger.Errorf("Error shutting down HTTP server: %v", err)

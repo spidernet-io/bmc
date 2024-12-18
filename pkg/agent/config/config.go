@@ -35,18 +35,18 @@ const (
 // AgentConfig represents the agent configuration
 type AgentConfig struct {
 	ClusterAgentName string
-	agentObjSpec     bmcv1beta1.ClusterAgentSpec
+	AgentObjSpec     bmcv1beta1.ClusterAgentSpec
 	TLSPath          string
 }
 
 // ValidateEndpointConfig validates the endpoint configuration
 func (c *AgentConfig) ValidateEndpointConfig(clientset *kubernetes.Clientset) error {
-	if c.agentObjSpec.Endpoint == nil {
+	if c.AgentObjSpec.Endpoint == nil {
 		return fmt.Errorf("endpoint configuration is required")
 	}
 
-	if c.agentObjSpec.Endpoint.HTTPS {
-		if c.agentObjSpec.Endpoint.SecretName == "" || c.agentObjSpec.Endpoint.SecretNamespace == "" {
+	if c.AgentObjSpec.Endpoint.HTTPS {
+		if c.AgentObjSpec.Endpoint.SecretName == "" || c.AgentObjSpec.Endpoint.SecretNamespace == "" {
 			return fmt.Errorf("when HTTPS is enabled, both secretName and secretNamespace must be specified")
 		}
 
@@ -56,9 +56,9 @@ func (c *AgentConfig) ValidateEndpointConfig(clientset *kubernetes.Clientset) er
 		}
 
 		// Get the secret
-		secret, err := clientset.CoreV1().Secrets(c.agentObjSpec.Endpoint.SecretNamespace).Get(
+		secret, err := clientset.CoreV1().Secrets(c.AgentObjSpec.Endpoint.SecretNamespace).Get(
 			context.TODO(),
-			c.agentObjSpec.Endpoint.SecretName,
+			c.AgentObjSpec.Endpoint.SecretName,
 			metav1.GetOptions{},
 		)
 		if err != nil {
@@ -75,8 +75,8 @@ func (c *AgentConfig) ValidateEndpointConfig(clientset *kubernetes.Clientset) er
 	}
 
 	// Check if port is valid
-	if c.agentObjSpec.Endpoint.Port <= 0 || c.agentObjSpec.Endpoint.Port > 65535 {
-		return fmt.Errorf("invalid port number: %d", c.agentObjSpec.Endpoint.Port)
+	if c.AgentObjSpec.Endpoint.Port <= 0 || c.AgentObjSpec.Endpoint.Port > 65535 {
+		return fmt.Errorf("invalid port number: %d", c.AgentObjSpec.Endpoint.Port)
 	}
 
 	return nil
@@ -113,16 +113,16 @@ func (c *AgentConfig) storeTLSFiles(secret *corev1.Secret) error {
 
 // ValidateFeatureConfig validates the feature configuration
 func (c *AgentConfig) ValidateFeatureConfig() error {
-	if c.agentObjSpec.Feature == nil {
+	if c.AgentObjSpec.Feature == nil {
 		return fmt.Errorf("feature configuration is required")
 	}
 
-	if c.agentObjSpec.Feature.EnableDhcpServer {
-		if c.agentObjSpec.Feature.DhcpServerConfig == nil {
+	if c.AgentObjSpec.Feature.EnableDhcpServer {
+		if c.AgentObjSpec.Feature.DhcpServerConfig == nil {
 			return fmt.Errorf("dhcp server config must be specified when dhcp server is enabled")
 		}
 
-		config := c.agentObjSpec.Feature.DhcpServerConfig
+		config := c.AgentObjSpec.Feature.DhcpServerConfig
 
 		if config.DhcpServerInterface == "" {
 			return fmt.Errorf("dhcp server interface must be specified when dhcp server is enabled")
@@ -148,37 +148,37 @@ func (c *AgentConfig) GetDetailString() string {
 
 	// AgentYaml details
 	details.WriteString("  AgentYaml:\n")
-	details.WriteString(fmt.Sprintf("    UnderlayInterface: %s\n", c.agentObjSpec.AgentYaml.UnderlayInterface))
-	details.WriteString(fmt.Sprintf("    Image: %s\n", c.agentObjSpec.AgentYaml.Image))
-	if c.agentObjSpec.AgentYaml.Replicas != nil {
-		details.WriteString(fmt.Sprintf("    Replicas: %d\n", *c.agentObjSpec.AgentYaml.Replicas))
+	details.WriteString(fmt.Sprintf("    UnderlayInterface: %s\n", c.AgentObjSpec.AgentYaml.UnderlayInterface))
+	details.WriteString(fmt.Sprintf("    Image: %s\n", c.AgentObjSpec.AgentYaml.Image))
+	if c.AgentObjSpec.AgentYaml.Replicas != nil {
+		details.WriteString(fmt.Sprintf("    Replicas: %d\n", *c.AgentObjSpec.AgentYaml.Replicas))
 	}
-	if c.agentObjSpec.AgentYaml.NodeName != "" {
-		details.WriteString(fmt.Sprintf("    NodeName: %s\n", c.agentObjSpec.AgentYaml.NodeName))
+	if c.AgentObjSpec.AgentYaml.NodeName != "" {
+		details.WriteString(fmt.Sprintf("    NodeName: %s\n", c.AgentObjSpec.AgentYaml.NodeName))
 	}
 
 	// Endpoint details
-	if c.agentObjSpec.Endpoint != nil {
+	if c.AgentObjSpec.Endpoint != nil {
 		details.WriteString("  Endpoint:\n")
-		details.WriteString(fmt.Sprintf("    Port: %d\n", c.agentObjSpec.Endpoint.Port))
-		details.WriteString(fmt.Sprintf("    HTTPS: %v\n", c.agentObjSpec.Endpoint.HTTPS))
-		if c.agentObjSpec.Endpoint.SecretName != "" {
-			details.WriteString(fmt.Sprintf("    SecretName: %s\n", c.agentObjSpec.Endpoint.SecretName))
+		details.WriteString(fmt.Sprintf("    Port: %d\n", c.AgentObjSpec.Endpoint.Port))
+		details.WriteString(fmt.Sprintf("    HTTPS: %v\n", c.AgentObjSpec.Endpoint.HTTPS))
+		if c.AgentObjSpec.Endpoint.SecretName != "" {
+			details.WriteString(fmt.Sprintf("    SecretName: %s\n", c.AgentObjSpec.Endpoint.SecretName))
 		}
-		if c.agentObjSpec.Endpoint.SecretNamespace != "" {
-			details.WriteString(fmt.Sprintf("    SecretNamespace: %s\n", c.agentObjSpec.Endpoint.SecretNamespace))
+		if c.AgentObjSpec.Endpoint.SecretNamespace != "" {
+			details.WriteString(fmt.Sprintf("    SecretNamespace: %s\n", c.AgentObjSpec.Endpoint.SecretNamespace))
 		}
 	}
 
 	// Feature details
-	if c.agentObjSpec.Feature != nil {
+	if c.AgentObjSpec.Feature != nil {
 		details.WriteString("  Feature:\n")
-		details.WriteString(fmt.Sprintf("    EnableDhcpServer: %v\n", c.agentObjSpec.Feature.EnableDhcpServer))
+		details.WriteString(fmt.Sprintf("    EnableDhcpServer: %v\n", c.AgentObjSpec.Feature.EnableDhcpServer))
 
 		// DHCP Server Config details
-		if c.agentObjSpec.Feature.DhcpServerConfig != nil {
+		if c.AgentObjSpec.Feature.DhcpServerConfig != nil {
 			details.WriteString("    DhcpServerConfig:\n")
-			config := c.agentObjSpec.Feature.DhcpServerConfig
+			config := c.AgentObjSpec.Feature.DhcpServerConfig
 			details.WriteString(fmt.Sprintf("      EnableDhcpDiscovery: %v\n", config.EnableDhcpDiscovery))
 			details.WriteString(fmt.Sprintf("      DhcpServerInterface: %s\n", config.DhcpServerInterface))
 			details.WriteString(fmt.Sprintf("      Subnet: %s\n", config.Subnet))
@@ -189,8 +189,8 @@ func (c *AgentConfig) GetDetailString() string {
 			}
 		}
 
-		details.WriteString(fmt.Sprintf("    RedfishMetrics: %v\n", c.agentObjSpec.Feature.RedfishMetrics))
-		details.WriteString(fmt.Sprintf("    EnableGuiProxy: %v\n", c.agentObjSpec.Feature.EnableGuiProxy))
+		details.WriteString(fmt.Sprintf("    RedfishMetrics: %v\n", c.AgentObjSpec.Feature.RedfishMetrics))
+		details.WriteString(fmt.Sprintf("    EnableGuiProxy: %v\n", c.AgentObjSpec.Feature.EnableGuiProxy))
 	}
 
 	return details.String()
@@ -237,7 +237,7 @@ func LoadAgentConfig(k8sClient *kubernetes.Clientset) (*AgentConfig, error) {
 	// Create agent config
 	agentConfig := &AgentConfig{
 		ClusterAgentName: agentName,
-		agentObjSpec:     clusterAgent.Spec,
+		AgentObjSpec:     clusterAgent.Spec,
 	}
 
 	// Validate endpoint configuration

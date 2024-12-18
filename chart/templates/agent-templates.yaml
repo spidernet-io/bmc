@@ -40,6 +40,10 @@ data:
           containers:
           - name: agent
             image: {{`{{ .Image }}`}}
+            securityContext:
+              capabilities:
+                add:
+                - NET_ADMIN
             env:
             - name: CLUSTERAGENT_NAME
               value: {{`{{ .ClusterName }}`}}

@@ -28,6 +28,20 @@ helm install spiderpool spiderpool/spiderpool \
   --set plugins.installCNI=true
 
 
+# INTERFACE=eth0
+# cat <<EOF | kubectl apply -f -
+# apiVersion: spiderpool.spidernet.io/v2beta1
+# kind: SpiderMultusConfig
+# metadata:
+#   name: ${INTERFACE}-macvlan
+#   namespace: spiderpool
+# spec:
+#   cniType: macvlan
+#   disableIPAM: true
+#   macvlan:
+#     master: ["${INTERFACE}"]
+# EOF
+
 INTERFACE=eth0
 cat <<EOF | kubectl apply -f -
 apiVersion: spiderpool.spidernet.io/v2beta1

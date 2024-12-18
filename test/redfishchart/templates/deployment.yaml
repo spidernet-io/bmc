@@ -51,23 +51,20 @@ spec:
           ip a 
           ip addr flush dev {{ .Values.networkInterface }}
           (
-              echo "waiting for DHCP client to configure interface {{ .Values.networkInterface }}"
-              while [ "$(ip addr show {{ .Values.networkInterface }} | grep 'inet ' | awk '{ print $2 }')" = "" ]; do 
-                  sleep 2
-                  echo " waiting for DHCP client to configure interface {{ .Values.networkInterface }}"
+              echo " renew dhcpClient on {{ .Values.networkInterface }}" 
+              while true ; do
+                  dhclient -v {{ .Values.networkInterface }}
+                  echo "finish dhcpClient on {{ .Values.networkInterface }}"
+                  touch /tmp/ready
+                  ip a
+                  sleep 60
               done
-              echo "ready"
-              touch /tmp/ready
-              ip a
           )&
-          (
-              echo "test redfish server"
-              sleep 10
-              curl http://127.0.0.1:8000/redfish/v1
-          )
-          # Start DHCP client on the interface
-          echo "run dhcpClient on {{ .Values.networkInterface }}"
-          dhclient -v {{ .Values.networkInterface }}
+          sleep 5
+          echo "test redfish server"
+          IP=$(ip addr show dev {{ .Values.networkInterface }} | grep "inet " | awk '{ print $2 }' | cut -d/ -f1)
+          curl http://${IP}:8000/redfish/v1
+          sleep infinity
         readinessProbe:
           exec:
             command:

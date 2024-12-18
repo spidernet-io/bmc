@@ -50,7 +50,7 @@ spec:
       subnet: "192.168.0.0/24" // 必须有值， controller 的 webhook 校验 子网格式
       ipRange: "192.168.0.10-192.168.0.100" // 必须有值，controller 的 webhook 校验 格式
       gateway: "192.168.0.1"  // 必须有值， controller 的 webhook 校验 格式
-      selfIp: "192.168.0.2" // 可选， controller 的 webhook 校验 格式
+      selfIp: "192.168.0.2/24" // 可选， controller 的 webhook 校验 格式
     redfishMetrics: true
     enableGuiProxy: true
 status:

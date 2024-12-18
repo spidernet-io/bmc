@@ -7,23 +7,10 @@ include ../Makefile.def
 KIND_CLUSTER_NAME ?= bmc-e2e
 KIND_CONFIG = kind-config.yaml
 
-# Create kind cluster configuration file
-define KIND_CONFIG_CONTENT
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-- role: worker
-endef
-export KIND_CONFIG_CONTENT
-
 # Initialize kind cluster with 1 worker node
 init:
-	@echo "Creating kind cluster configuration..."
-	@echo "$$KIND_CONFIG_CONTENT" > $(KIND_CONFIG)
 	@echo "Creating kind cluster with name: $(KIND_CLUSTER_NAME)"
 	kind create cluster --name $(KIND_CLUSTER_NAME) --config $(KIND_CONFIG)
-	@rm -f $(KIND_CONFIG)
 	@echo "Kind cluster created successfully"
 
 
@@ -45,6 +32,7 @@ deploy:
 	kind load docker-image $(AGENT_IMAGE_REF) --name $(KIND_CLUSTER_NAME)
 	@echo "Images loaded successfully"
 	@echo "Deploying application using Helm chart..."
+	- helm uninstall bmc -n bmc &>/dev/null || true
 	helm install bmc ../chart \
 		--namespace bmc \
 		--create-namespace \
@@ -55,13 +43,11 @@ deploy:
 		--set clusterAgent.agentYaml.image.tag=$(VERSION) \
 		--set clusterAgent.endpoint.https=false \
 		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
-		--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker"
+		--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker" \
 		--set clusterAgent.feature.dhcpServerConfig.subnet="192.168.0.0/24" \
 		--set clusterAgent.feature.dhcpServerConfig.ipRange="192.168.0.10-192.168.0.100" \
 		--set clusterAgent.feature.dhcpServerConfig.gateway="192.168.0.1" \
-		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2"
-
-
+		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2/24"
 
 # Clean up kind cluster
 clean:
