@@ -4,10 +4,9 @@ metadata:
   name: test-clusteragent
 spec:
   agentYaml:
-    underlayInterface: kube-system/macvlan-pod-network
+    underlayInterface: "kube-system/macvlan-pod-network"
     image: spidernet-io/bmc/agent:v0.0.1
     replicas: 1
-    # Optional: Node affinity configuration
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
@@ -24,3 +23,21 @@ spec:
             operator: In
             values:
             - "true"
+  endpoint:
+    port: 80
+    secretName: "abc"
+    secretNamespace: "bmc"
+    https: true
+  feature:
+    enableDhcpServer: true
+    dhcpServerConfig:
+      enableDhcpDiscovery: true
+      dhcpServerInterface: "net1"
+      subnet: "192.168.0.0/24"
+      ipRange: "192.168.0.10-192.168.0.100"
+      gateway: "192.168.0.1"
+      selfIp: "192.168.0.2"
+    redfishMetrics: true
+    enableGuiProxy: true
+status:
+  ready: true

@@ -32,8 +32,17 @@ spec:
   {{- with .Values.clusterAgent.feature }}
   feature:
     enableDhcpServer: {{ .enableDhcpServer }}
-    enableDhcpDiscovery: {{ .enableDhcpDiscovery }}
-    dhcpServerInterface: {{ .dhcpServerInterface }}
+    {{- if .enableDhcpServer }}
+    dhcpServerConfig:
+      enableDhcpDiscovery: {{ .dhcpServerConfig.enableDhcpDiscovery | default true }}
+      dhcpServerInterface: {{ .dhcpServerConfig.dhcpServerInterface }}
+      subnet: {{ .dhcpServerConfig.subnet }}
+      ipRange: {{ .dhcpServerConfig.ipRange }}
+      gateway: {{ .dhcpServerConfig.gateway }}
+      {{- if .dhcpServerConfig.selfIp }}
+      selfIp: {{ .dhcpServerConfig.selfIp }}
+      {{- end }}
+    {{- end }}
     redfishMetrics: {{ .redfishMetrics }}
     enableGuiProxy: {{ .enableGuiProxy }}
   {{- end }}

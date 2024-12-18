@@ -72,19 +72,47 @@ type EndpointConfig struct {
 	HTTPS bool `json:"https,omitempty"`
 }
 
+// DhcpServerConfig defines the configuration for the DHCP server
+type DhcpServerConfig struct {
+	// EnableDhcpDiscovery enables DHCP discovery
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Required
+	EnableDhcpDiscovery bool `json:"enableDhcpDiscovery"`
+
+	// DhcpServerInterface specifies the interface for DHCP server
+	// +kubebuilder:validation:Required
+	DhcpServerInterface string `json:"dhcpServerInterface"`
+
+	// Subnet specifies the subnet for DHCP server
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$`
+	Subnet string `json:"subnet"`
+
+	// IpRange specifies the IP range for DHCP server
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}-([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	IpRange string `json:"ipRange"`
+
+	// Gateway specifies the gateway for DHCP server
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	Gateway string `json:"gateway"`
+
+	// SelfIp specifies the self IP for DHCP server
+	// +optional
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	SelfIp string `json:"selfIp,omitempty"`
+}
+
 // FeatureConfig defines the feature configuration for the agent
 type FeatureConfig struct {
 	// EnableDhcpServer enables the DHCP server
 	// +kubebuilder:default=true
 	EnableDhcpServer bool `json:"enableDhcpServer,omitempty"`
 
-	// EnableDhcpDiscovery enables DHCP discovery
-	// +kubebuilder:default=true
-	EnableDhcpDiscovery bool `json:"enableDhcpDiscovery,omitempty"`
-
-	// DhcpServerInterface specifies the interface for DHCP server
-	// +kubebuilder:default="net1"
-	DhcpServerInterface string `json:"dhcpServerInterface,omitempty"`
+	// DhcpServerConfig contains the DHCP server configuration
+	// +optional
+	DhcpServerConfig *DhcpServerConfig `json:"dhcpServerConfig,omitempty"`
 
 	// RedfishMetrics enables redfish metrics collection
 	// +kubebuilder:default=false

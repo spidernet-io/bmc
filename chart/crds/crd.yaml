@@ -201,21 +201,46 @@ spec:
                 - https
                 type: object
               feature:
-                description: FeatureConfig defines the feature configuration for the agent
+                description: Feature contains the feature configuration for the agent
                 type: object
                 properties:
                   enableDhcpServer:
                     description: EnableDhcpServer enables the DHCP server
                     type: boolean
                     default: true
-                  enableDhcpDiscovery:
-                    description: EnableDhcpDiscovery enables DHCP discovery
-                    type: boolean
-                    default: true
-                  dhcpServerInterface:
-                    description: DhcpServerInterface specifies the interface for DHCP server
-                    type: string
-                    default: "net1"
+                  dhcpServerConfig:
+                    description: DhcpServerConfig contains the DHCP server configuration when enableDhcpServer is true
+                    type: object
+                    required:
+                      - enableDhcpDiscovery
+                      - dhcpServerInterface
+                      - subnet
+                      - ipRange
+                      - gateway
+                    properties:
+                      enableDhcpDiscovery:
+                        description: EnableDhcpDiscovery enables DHCP discovery
+                        type: boolean
+                        default: true
+                      dhcpServerInterface:
+                        description: DhcpServerInterface specifies the interface for DHCP server
+                        type: string
+                      subnet:
+                        description: Subnet specifies the subnet for DHCP server
+                        type: string
+                        pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$'
+                      ipRange:
+                        description: IpRange specifies the IP range for DHCP server
+                        type: string
+                        pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}-([0-9]{1,3}\.){3}[0-9]{1,3}$'
+                      gateway:
+                        description: Gateway specifies the gateway for DHCP server
+                        type: string
+                        pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+                      selfIp:
+                        description: SelfIp specifies the self IP for DHCP server
+                        type: string
+                        pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
                   redfishMetrics:
                     description: RedfishMetrics enables redfish metrics collection
                     type: boolean
@@ -226,10 +251,6 @@ spec:
                     default: true
                 required:
                 - enableDhcpServer
-                - enableDhcpDiscovery
-                - dhcpServerInterface
-                - redfishMetrics
-                - enableGuiProxy
                 type: object
             required:
             - agentYaml

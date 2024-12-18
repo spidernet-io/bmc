@@ -90,16 +90,17 @@ func (w *ClusterAgentWebhook) Default(ctx context.Context, obj runtime.Object) e
 	if clusterAgent.Spec.Feature == nil {
 		logger.Info("Initializing feature with default values")
 		clusterAgent.Spec.Feature = &bmcv1beta1.FeatureConfig{
-			EnableDhcpServer:     true,
-			EnableDhcpDiscovery:  true,
-			DhcpServerInterface:  "net1",
-			RedfishMetrics:       false,
-			EnableGuiProxy:       true,
+			EnableDhcpServer: true,
+			DhcpServerConfig: &bmcv1beta1.DhcpServerConfig{
+				EnableDhcpDiscovery: true,
+				DhcpServerInterface: "net1",
+			},
+			RedfishMetrics: false,
+			EnableGuiProxy: true,
 		}
-		logger.Infof("Set default feature values - EnableDhcpServer: %v, EnableDhcpDiscovery: %v, DhcpServerInterface: %s, RedfishMetrics: %v, EnableGuiProxy: %v",
+		logger.Infof("Set default feature values - EnableDhcpServer: %v, DhcpServerConfig: %+v, RedfishMetrics: %v, EnableGuiProxy: %v",
 			clusterAgent.Spec.Feature.EnableDhcpServer,
-			clusterAgent.Spec.Feature.EnableDhcpDiscovery,
-			clusterAgent.Spec.Feature.DhcpServerInterface,
+			clusterAgent.Spec.Feature.DhcpServerConfig,
 			clusterAgent.Spec.Feature.RedfishMetrics,
 			clusterAgent.Spec.Feature.EnableGuiProxy)
 	} else {
@@ -108,14 +109,16 @@ func (w *ClusterAgentWebhook) Default(ctx context.Context, obj runtime.Object) e
 			logger.Info("Setting default feature EnableDhcpServer: true")
 			clusterAgent.Spec.Feature.EnableDhcpServer = true
 		}
-		if !clusterAgent.Spec.Feature.EnableDhcpDiscovery {
-			logger.Info("Setting default feature EnableDhcpDiscovery: true")
-			clusterAgent.Spec.Feature.EnableDhcpDiscovery = true
+
+		// Initialize DhcpServerConfig if not specified
+		if clusterAgent.Spec.Feature.EnableDhcpServer && clusterAgent.Spec.Feature.DhcpServerConfig == nil {
+			logger.Info("Initializing DhcpServerConfig with default values")
+			clusterAgent.Spec.Feature.DhcpServerConfig = &bmcv1beta1.DhcpServerConfig{
+				EnableDhcpDiscovery: true,
+				DhcpServerInterface: "net1",
+			}
 		}
-		if clusterAgent.Spec.Feature.DhcpServerInterface == "" {
-			logger.Info("Setting default feature DhcpServerInterface: net1")
-			clusterAgent.Spec.Feature.DhcpServerInterface = "net1"
-		}
+
 		if !clusterAgent.Spec.Feature.EnableGuiProxy {
 			logger.Info("Setting default feature EnableGuiProxy: true")
 			clusterAgent.Spec.Feature.EnableGuiProxy = true
@@ -199,8 +202,63 @@ func (w *ClusterAgentWebhook) validateClusterAgent(ctx context.Context, clusterA
 
 	// Validate name format
 	if err := validateClusterName(clusterAgent.Name); err != nil {
-		logger.Errorf("Invalid name format: %v", err)
+		logger.Error(err.Error())
 		return err
+	}
+
+	// Validate DHCP server configuration
+	if clusterAgent.Spec.Feature != nil && clusterAgent.Spec.Feature.EnableDhcpServer {
+		if clusterAgent.Spec.Feature.DhcpServerConfig == nil {
+			logger.Error("dhcpServerConfig is required when enableDhcpServer is true")
+			return fmt.Errorf("dhcpServerConfig is required when enableDhcpServer is true")
+		}
+
+		config := clusterAgent.Spec.Feature.DhcpServerConfig
+
+		// Validate required fields
+		if config.DhcpServerInterface == "" {
+			logger.Error("dhcpServerInterface is required in dhcpServerConfig")
+			return fmt.Errorf("dhcpServerInterface is required in dhcpServerConfig")
+		}
+
+		if config.Subnet == "" {
+			logger.Error("subnet is required in dhcpServerConfig")
+			return fmt.Errorf("subnet is required in dhcpServerConfig")
+		}
+
+		if config.IpRange == "" {
+			logger.Error("ipRange is required in dhcpServerConfig")
+			return fmt.Errorf("ipRange is required in dhcpServerConfig")
+		}
+
+		if config.Gateway == "" {
+			logger.Error("gateway is required in dhcpServerConfig")
+			return fmt.Errorf("gateway is required in dhcpServerConfig")
+		}
+
+		// Validate IP formats
+		subnetRegex := regexp.MustCompile(`^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$`)
+		if !subnetRegex.MatchString(config.Subnet) {
+			logger.Error("invalid subnet format")
+			return fmt.Errorf("invalid subnet format: %s", config.Subnet)
+		}
+
+		ipRangeRegex := regexp.MustCompile(`^([0-9]{1,3}\.){3}[0-9]{1,3}-([0-9]{1,3}\.){3}[0-9]{1,3}$`)
+		if !ipRangeRegex.MatchString(config.IpRange) {
+			logger.Error("invalid ipRange format")
+			return fmt.Errorf("invalid ipRange format: %s", config.IpRange)
+		}
+
+		ipRegex := regexp.MustCompile(`^([0-9]{1,3}\.){3}[0-9]{1,3}$`)
+		if !ipRegex.MatchString(config.Gateway) {
+			logger.Error("invalid gateway format")
+			return fmt.Errorf("invalid gateway format: %s", config.Gateway)
+		}
+
+		if config.SelfIp != "" && !ipRegex.MatchString(config.SelfIp) {
+			logger.Error("invalid selfIp format")
+			return fmt.Errorf("invalid selfIp format: %s", config.SelfIp)
+		}
 	}
 
 	// Validate replicas

@@ -42,19 +42,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Validate endpoint configuration
-	if err := agentConfig.ValidateEndpointConfig(k8sClient); err != nil {
-		log.Logger.Errorf("Invalid endpoint configuration: %v", err)
-		os.Exit(1)
-	}
-
-	// Validate feature configuration
-	if err := agentConfig.ValidateFeatureConfig(); err != nil {
-		log.Logger.Errorf("Invalid feature configuration: %v", err)
-		os.Exit(1)
-	}
-
 	log.Logger.Info("Agent configuration loaded and validated successfully")
+	log.Logger.Debug("Agent configuration details:")
+	log.Logger.Debug(agentConfig.GetDetailString())
 
 	// Create and start HTTP server for health checks
 	srv := server.NewServer(int32(*healthPort))

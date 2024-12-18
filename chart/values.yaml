@@ -55,10 +55,20 @@ clusterAgent:
   feature:
     # Enable DHCP server (default: true)
     enableDhcpServer: true
-    # Enable DHCP discovery (default: true)
-    enableDhcpDiscovery: true
-    # DHCP server interface (default: net1)
-    dhcpServerInterface: "net1"
+    # DHCP server configuration (required when enableDhcpServer is true)
+    dhcpServerConfig:
+      # Enable DHCP discovery (default: true)
+      enableDhcpDiscovery: true
+      # DHCP server interface (required)
+      dhcpServerInterface: "net1"
+      # Subnet for DHCP server (required)
+      subnet: "192.168.0.0/24"
+      # IP range for DHCP server (required)
+      ipRange: "192.168.0.10-192.168.0.100"
+      # Gateway for DHCP server (required)
+      gateway: "192.168.0.1"
+      # Self IP for DHCP server (optional)
+      selfIp: "192.168.0.2"
     # Enable Redfish metrics collection (default: false)
     redfishMetrics: false
     # Enable GUI proxy (default: true)

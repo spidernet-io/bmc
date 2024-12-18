@@ -26,6 +26,27 @@ type agentConfig struct {
 （3）spec.feature. dhcpServerInterface 必须有值，且确认该值所代表的网卡  是否存在于 网络接口中，且网卡 up 状态， 否则 程序报错退出
 
 
+## dhcp server 模块
+
+在 pkg/dhcpserver 下 实现一个 接口模块，使用 interface 对外暴露，  它应该具备如下方法，并实现它们
+
+1 启动 dhcp server 接口
+    它基于 dhcpd 二进制来启动 dhcp server 服务
+    模块的参数，工作的网卡名参数（必备），暴露 dhcp 分配 ip 的子网 参数（必备），可分配 ip 参数（必备） , 分配给 client 端的 子网网关 ip 参数（必备）。 这些参数 传递给 dhcpd 进行工作
+    模块的参数，包括 网卡名参数 （必备） 和 网卡 ip 参数（可选），如果 网卡 ip 参数 具备，则 把 网卡名参数所代表的 网卡上的 IP 地址 去除，然后 用 网卡 ip 参数 代替 生效
+    模块一直监控 dhcpd 的运行，当 它 故障时，能够再次 尝试 拉起 它 
+    模块一直监控 dhcpd 的运行，当 分配 或者 释放 一个 ip 时，有 日志 输出，该行日志中 包括 可分配 ip 的 总量和剩余量
+
+2 获取 dhcpd 分配出的 所有 client 的 ip 地址 和 对应的 mac 的列表
+
+3 关闭 dhcp server 接口， 停止 dhcpd 服务
+
+4 获取 dhcpd 的工作情况接口， 包括输出 当前可分配 ip 的 总量和剩余量 等
+
+
+agent 的  main 函数 主框架中， 根据 自身的 agentConfig 中的 enable dhcp server 配置，来决定 是否要调用 pkg/dhcpserver 模块中的接口，来启动 dhcp server
+
+
 ## crd hostEndpoint
 
 

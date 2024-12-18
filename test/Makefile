@@ -46,6 +46,9 @@ deploy:
 	@echo "Images loaded successfully"
 	@echo "Deploying application using Helm chart..."
 	helm install bmc ../chart \
+		--namespace bmc \
+		--create-namespace \
+		--wait \
 		--set image.repository=$(CONTROLLER_IMAGE) \
 		--set image.tag=$(VERSION) \
 		--set clusterAgent.agentYaml.image.repository=$(AGENT_IMAGE) \
@@ -53,6 +56,11 @@ deploy:
 		--set clusterAgent.endpoint.https=false \
 		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
 		--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker"
+		--set clusterAgent.feature.dhcpServerConfig.subnet="192.168.0.0/24" \
+		--set clusterAgent.feature.dhcpServerConfig.ipRange="192.168.0.10-192.168.0.100" \
+		--set clusterAgent.feature.dhcpServerConfig.gateway="192.168.0.1" \
+		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2"
+
 
 
 # Clean up kind cluster
