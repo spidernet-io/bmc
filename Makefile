@@ -87,6 +87,22 @@ clean:
 	rm -rf $(BIN_DIR)
 	rm -f *.tgz
 
+.PHONY: update_crd_sdk
+update_crd_sdk:
+	@ echo "update crd manifest" && ./tools/golang/crdControllerGen.sh
+	@ echo "update crd sdk" && ./tools/golang/crdSdkGen.sh
+
+
+.PHONY: validate_crd_sdk
+validate_crd_sdk:
+	@ echo "validate crd manifest"
+	make update_crd_sdk ; \
+		if ! test -z "$$(git status --porcelain)"; then \
+  			echo "please run 'make update_crd_sdk' to update crd code" ; \
+  			exit 1 ; \
+  		fi ; echo "succeed to check crd sdk"
+
+
 # Help
 .PHONY: usage
 usage:

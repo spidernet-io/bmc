@@ -125,7 +125,8 @@ status:
 
 请在 @crd.yaml 中生成该 crd
 请在 @templates/agent-templates.yaml 中的 agent role 中赋予 hoststatus 的权限
-更新 crd hostStatus 在 @pkg/apis/bmc/v1beta1 中的相关定义
+
+期间，在 @pkg/k8s/apis 中创建 crd 定义后， 可使用 make update_crd_sdk  来生成 配套的 client sdk，位于 pkg/k8s/client 下 ， 相关的 deep copy 函数，也会生成在 @pkg/k8s/apis
 
 @pkg/agent/hoststatus 目录下 创建一个 hoststatus 维护模块，它 通过 interface{} 对外暴露使用，它应该有如下接口
 
@@ -150,7 +151,7 @@ status:
                   hostStatus status.basic.mac = ""
                   刷新 hostStatus status.lastUpdateTime
 
-      * 它 启动一个携程，通过 两个 channel  接收 来自 @pkg/dhcpserver/server.go 中的  func (s *dhcpServer) updateStats() error 中的 事件 通知， 获取 新增 和 删除 的 client 信息
+      * 它 启动一个携程，通过 暴露两个 channel 变量，  让 @pkg/dhcpserver/server.go 中的  func (s *dhcpServer) updateStats() error 中 发生事件 时主动通知， 获取 新增 和 删除 的 client 信息
             当有新的 dhcp client 分配了 ip ， 把么 创建对应的 hostStatus 对象
                   hostStatus metadata.name = agentConfig 中的 clusterAgentName + 新 client 的 ip (把 . 替换成 -)
                   hostStatus metadata.ownerReferences 关联到 空

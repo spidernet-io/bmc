@@ -173,7 +173,7 @@ func LoadAgentConfig(k8sClient *kubernetes.Clientset) (*AgentConfig, error) {
 	// Add bmc scheme and set GroupVersion
 	scheme := runtime.NewScheme()
 	bmcv1beta1.AddToScheme(scheme)
-	restConfig.GroupVersion = &bmcv1beta1.GroupVersion
+	restConfig.GroupVersion = &bmcv1beta1.SchemeGroupVersion
 	restConfig.APIPath = "/apis"
 	restConfig.NegotiatedSerializer = serializer.NewCodecFactory(scheme)
 

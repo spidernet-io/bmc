@@ -6,11 +6,18 @@ import (
 )
 
 // +genclient
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="READY",type="boolean",JSONPath=".status.ready"
-// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:resource:scope=Cluster
+
+// ClusterAgent is the Schema for the clusteragents API
+type ClusterAgent struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ClusterAgentSpec   `json:"spec,omitempty"`
+	Status ClusterAgentStatus `json:"status,omitempty"`
+}
 
 // ClusterAgentSpec defines the desired state of ClusterAgent
 type ClusterAgentSpec struct {
@@ -134,16 +141,7 @@ type ClusterAgentStatus struct {
 	Ready bool `json:"ready,omitempty"`
 }
 
-// ClusterAgent represents a cluster-wide agent deployment
-type ClusterAgent struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   ClusterAgentSpec   `json:"spec,omitempty"`
-	Status ClusterAgentStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ClusterAgentList contains a list of ClusterAgent
 type ClusterAgentList struct {

@@ -9,12 +9,27 @@ import (
 )
 
 var (
-	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "bmc.spidernet.io", Version: "v1beta1"}
+	// SchemeGroupVersion is group version used to register these objects
+	SchemeGroupVersion = schema.GroupVersion{Group: "bmc.spidernet.io", Version: "v1beta1"}
+
+	// Resource takes an unqualified resource and returns a Group qualified GroupResource
+	Resource = func(resource string) schema.GroupResource {
+		return SchemeGroupVersion.WithResource(resource).GroupResource()
+	}
+
+	// GroupResource takes an unqualified resource and returns a Group qualified GroupResource
+	GroupResource = func(resource string) schema.GroupResource {
+		return SchemeGroupVersion.WithResource(resource).GroupResource()
+	}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
-	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
+	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
 
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+func init() {
+	SchemeBuilder.Register(&ClusterAgent{}, &ClusterAgentList{})
+	SchemeBuilder.Register(&HostEndpoint{}, &HostEndpointList{})
+}
