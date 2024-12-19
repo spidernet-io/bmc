@@ -31,7 +31,7 @@ helm install redfish ${CURRENT_DIR_PATH}/../redfishchart \
   --wait \
   --namespace redfish \
   --create-namespace \
-  --set nodeName=${E2E_CLUSTER_NAME}-worker \
   --set replicaCount=2  \
   --set networkInterface=net1  \
   --set underlayMultusCNI="spiderpool/eth0-macvlan"
+  #--set nodeName=${E2E_CLUSTER_NAME}-worker \

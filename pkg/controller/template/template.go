@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -101,6 +102,19 @@ func RenderAllAgentResources(data *TemplateData) (map[string]*unstructured.Unstr
 		"agent-rolebinding.yaml",
 	}
 
+	// Check if agent-pvc.yaml exists and try to render it
+	pvcPath := filepath.Join("/etc/bmc/templates", "agent-pvc.yaml")
+	if _, err := os.Stat(pvcPath); err == nil {
+		if obj, err := RenderTemplate("agent-pvc.yaml", data); err == nil {
+			kind := strings.ToLower(obj.GetKind())
+			resources[kind] = obj
+			log.Logger.Infof("Successfully rendered PVC template")
+		} else {
+			log.Logger.Infof("Failed to render PVC template: %v", err)
+		}
+	}
+
+	// Render other templates
 	for _, tmpl := range templates {
 		log.Logger.Infof("Rendering template: %s", tmpl)
 

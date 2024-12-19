@@ -62,6 +62,35 @@ agent 的  main 函数 主框架中， 根据 自身的AgentConfig.objSpec.Featu
     NewDhcpServer 函数中，需要额外传入  clusterAgentName， 该变量用于生成 dhcp server 的 lease  文件名 /var/lib/dhcp/${clusterAgentName}-dhcpd.leases ， 给 dhcp server 使用， 这样，即使在 本地 磁盘持久阿虎是，能实现 文件的不冲突 
     
     
+root@bmc-e2e-worker:/# cat /var/lib/dhcp/bmc-clusteragent-dhcpd.leases
+          # The format of this file is documented in the dhcpd.leases(5) manual page.
+          # This lease file was written by isc-dhcp-4.4.3-P1
+
+          # authoring-byte-order entry is generated, DO NOT DELETE
+          authoring-byte-order little-endian;
+
+          server-duid "\000\001\000\001.\366\204O:R\256\274g\331";
+
+          lease 192.168.0.10 {
+            starts 4 2024/12/19 07:14:33;
+            ends 6 2025/01/18 07:14:33;
+            cltt 4 2024/12/19 07:14:33;
+            binding state active;
+            next binding state free;
+            rewind binding state free;
+            hardware ethernet 72:21:aa:24:56:d9;
+            client-hostname "redfish-redfish-mockup-ff6b7749c-7l95j";
+          }
+          lease 192.168.0.11 {
+            starts 4 2024/12/19 07:14:38;
+            ends 6 2025/01/18 07:14:38;
+            cltt 4 2024/12/19 07:14:38;
+            binding state active;
+            next binding state free;
+            rewind binding state free;
+            hardware ethernet a6:8a:53:f3:a8:03;
+            client-hostname "redfish-redfish-mockup-ff6b7749c-7njhv";
+          }
 
 ## crd hostEndpoint
 

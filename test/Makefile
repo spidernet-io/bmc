@@ -7,11 +7,13 @@ include ../Makefile.def
 KIND_CLUSTER_NAME ?= bmc-e2e
 KIND_CONFIG = kind-config.yaml
 
-# Initialize kind cluster with 1 worker node
+# Initialize kind cluster with 2 nodes
 init:
 	@echo "Creating kind cluster with name: $(KIND_CLUSTER_NAME)"
 	kind create cluster --name $(KIND_CLUSTER_NAME) --config $(KIND_CONFIG)
 	@echo "Kind cluster created successfully"
+	@echo "storageclass local-path does not allow pod with specified NodeName, so make all pods to run on the worker node"
+	kubectl taint node $(KIND_CLUSTER_NAME)-control-plane local-path=nopod:NoSchedule
 
 
 installDeps:
@@ -43,7 +45,6 @@ deploy:
 		--set clusterAgent.agentYaml.image.repository=$(AGENT_IMAGE) \
 		--set clusterAgent.agentYaml.image.tag=$(VERSION) \
 		--set clusterAgent.endpoint.https=false \
-		--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker" \
 		--set clusterAgent.agentYaml.hostNetwork=false \
 		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
 		--set clusterAgent.feature.dhcpServerConfig.dhcpServerInterface="net1" \
@@ -53,7 +54,10 @@ deploy:
 		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2/24" \
 		--set clusterAgent.endpoint.username="" \
 		--set clusterAgent.endpoint.password="" \
-		--set clusterAgent.endpoint.port=8000
+		--set clusterAgent.endpoint.port=8000 \
+		--set clusterAgent.storage.type="pvc"
+	#	--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker" \
+
 	# @echo "for host network deployment" 	
 	# helm install bmc ../chart \
 	# 	--namespace bmc \

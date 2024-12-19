@@ -6,8 +6,11 @@ import (
 	"os"
 	"reflect"
 	"sync"
-	"time"
 
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
+	"github.com/spidernet-io/bmc/pkg/controller/template"
+	"github.com/spidernet-io/bmc/pkg/log"
+	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -17,11 +20,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
-	"github.com/spidernet-io/bmc/pkg/log"
-	"github.com/spidernet-io/bmc/pkg/controller/template"
-	"go.uber.org/zap"
+	"time"
 )
 
 // ClusterAgentReconciler reconciles a ClusterAgent object
@@ -75,6 +74,13 @@ func (r *ClusterAgentReconciler) hasSpecChanged(old, new *bmcv1beta1.ClusterAgen
 // This includes the deployment, service account, role, and role binding
 // Also removes the instance from the local cache
 func (r *ClusterAgentReconciler) cleanupResources(ctx context.Context, name string, logger *zap.SugaredLogger) error {
+	// Get the ClusterAgent from cache
+	clusterAgent := r.getFromCache(name)
+	if clusterAgent == nil {
+		logger.Info("ClusterAgent not found in cache, skipping cleanup")
+		return nil
+	}
+
 	// First remove from cache
 	r.cache.Delete(name)
 
@@ -146,11 +152,11 @@ func (r *ClusterAgentReconciler) createOrUpdateResources(ctx context.Context, cl
 		Image:              agentImage,
 		Replicas:           replicas,
 		ServiceAccountName: name,
-		RoleName:           name,
+		RoleName:          name,
 		UnderlayInterface:  clusterAgent.Spec.AgentYaml.UnderlayInterface,
 		NodeAffinity:       clusterAgent.Spec.AgentYaml.NodeAffinity,
-		NodeName:           clusterAgent.Spec.AgentYaml.NodeName,
-		HostNetwork:        clusterAgent.Spec.AgentYaml.HostNetwork,
+		NodeName:          clusterAgent.Spec.AgentYaml.NodeName,
+		HostNetwork:       clusterAgent.Spec.AgentYaml.HostNetwork,
 	}
 
 	// Render resources from template
@@ -177,6 +183,9 @@ func (r *ClusterAgentReconciler) createOrUpdateResources(ctx context.Context, cl
 		logger.Infof("Resource operation completed: %s %s/%s (%s)",
 			kind, obj.GetNamespace(), obj.GetName(), result)
 	}
+
+	// Store in cache
+	r.storeInCache(clusterAgent.Name, clusterAgent)
 
 	return nil
 }

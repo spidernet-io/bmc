@@ -76,6 +76,8 @@ data:
             - name: dhcp-config
               mountPath: /etc/dhcp/templates
               readOnly: true
+            - name: dhcp-data
+              mountPath: /var/lib/dhcp
           volumes:
           - name: dhcp-config
             configMap:
@@ -83,6 +85,16 @@ data:
               items:
               - key: dhcp-config.tmpl
                 path: dhcp-config.tmpl
+          # DHCP data volume based on storage configuration
+          - name: dhcp-data
+          {{- if eq .Values.clusterAgent.storage.type "pvc" }}
+            persistentVolumeClaim:
+              claimName: {{`{{ .Name }}`}}-dhcp-data
+          {{- else }}
+            hostPath:
+              path: {{ .Values.clusterAgent.storage.hostPath.path }}
+              type: DirectoryOrCreate
+          {{- end }}
   agent-serviceaccount.yaml: |
     apiVersion: v1
     kind: ServiceAccount
@@ -92,6 +104,28 @@ data:
       labels:
         app: bmc-agent
         cluster: {{`{{ .ClusterName }}`}}
+  {{- if eq .Values.clusterAgent.storage.type "pvc" }}
+  agent-pvc.yaml: |
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: {{`{{ .Name }}`}}-dhcp-data
+      namespace: {{`{{ .Namespace }}`}}
+      labels:
+        app: bmc-agent
+        cluster: {{`{{ .ClusterName }}`}}
+    spec:
+      {{- if .Values.clusterAgent.storage.pvc.storageClass }}
+      storageClassName: {{ .Values.clusterAgent.storage.pvc.storageClass }}
+      {{- end }}
+      accessModes:
+      {{- range .Values.clusterAgent.storage.pvc.accessModes }}
+        - {{ . }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.clusterAgent.storage.pvc.size }}
+  {{- end }}
   agent-role.yaml: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRole

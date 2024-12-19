@@ -76,6 +76,26 @@ clusterAgent:
     # Enable GUI proxy (default: true)
     enableGuiProxy: true
 
+  # Storage configuration for DHCP lease files
+  storage:
+    # Storage type: "pvc" or "hostPath"
+    type: "hostPath"
+    # PVC configuration (used when type is "pvc")
+    # this should be used when production environment
+    pvc:
+      # Storage class for new PVC
+      storageClass: ""
+      # Storage size for new PVC
+      size: "100M"
+      # Access modes for PVC
+      accessModes:
+        - ReadWriteOnce
+    # HostPath configuration (used when type is "hostPath")
+    # this should be used only when POC environment
+    hostPath:
+      # Path on the host
+      path: "/var/lib/dhcp"
+
 # Webhook configuration
 webhook:
   # Port for webhook server to listen on and service to expose

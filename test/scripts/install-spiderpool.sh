@@ -8,8 +8,10 @@ set -o nounset
 helm repo add spiderpool https://spidernet-io.github.io/spiderpool
 helm repo update spiderpool
 
+VERSION=v0.9.7
+
 echo "load images to kind cluster ${E2E_CLUSTER_NAME}"
-IMAGES=$( helm template spiderpool spiderpool/spiderpool --set global.imageRegistryOverride=ghcr.m.daocloud.io | grep "image:"  | awk '{print $2}' | sort | tr -d '"' | uniq )
+IMAGES=$( helm template spiderpool spiderpool/spiderpool --version ${VERSION} --set global.imageRegistryOverride=ghcr.m.daocloud.io | grep "image:"  | awk '{print $2}' | sort | tr -d '"' | uniq )
 echo "IMAGES"
 echo "${IMAGES}"
 for IMAGE in $IMAGES; do
@@ -22,6 +24,7 @@ echo "install spiderpool"
 helm uninstall spiderpool -n  spiderpool || true 
 helm install spiderpool spiderpool/spiderpool \
   --wait \
+  --version ${VERSION} \
   --namespace spiderpool \
   --create-namespace \
   --set global.imageRegistryOverride=ghcr.m.daocloud.io \
