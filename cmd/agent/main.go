@@ -61,7 +61,7 @@ func main() {
 	if agentConfig.AgentObjSpec.Feature.EnableDhcpServer {
 		log.Logger.Info("Starting DHCP server...")
 		var err error
-		dhcpSrv, err = dhcpserver.NewDhcpServer(agentConfig.AgentObjSpec.Feature.DhcpServerConfig)
+		dhcpSrv, err = dhcpserver.NewDhcpServer(agentConfig.AgentObjSpec.Feature.DhcpServerConfig, agentConfig.ClusterAgentName)
 		if err != nil {
 			log.Logger.Errorf("Failed to initialize DHCP server: %v", err)
 			os.Exit(1)

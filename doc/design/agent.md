@@ -42,6 +42,7 @@ type agentConfig struct {
 
     模块一直监控 dhcpd 的运行，当 分配 或者 释放 一个 ip 时，有 日志 输出，该行日志中 包括 可分配 ip 的 总量和剩余量
 
+
 2 获取 client 信息接口 
    接口输出 获取 dhcpd 分配出的 所有 client 的 ip 地址 和 对应的 mac 的列表
 
@@ -58,7 +59,9 @@ agent 的  main 函数 主框架中， 根据 自身的AgentConfig.objSpec.Featu
 这样，在 helm 中的 values.yaml 中， 需要支持 二选一的 方式 来 进行持久化 
 （1）在调试环境中，使用宿主机的 本地挂载， 把 宿主机的 /var/lib/dhcp/ 目录 挂载给 agent pod  的 /var/lib/dhcp/ 
 （2）在生产环境中，可使用 pvc 来存储 dhcpd 的数据，把 pvc 挂载给 agent pod 的 /var/lib/dhcp/
-
+    NewDhcpServer 函数中，需要额外传入  clusterAgentName， 该变量用于生成 dhcp server 的 lease  文件名 /var/lib/dhcp/${clusterAgentName}-dhcpd.leases ， 给 dhcp server 使用， 这样，即使在 本地 磁盘持久阿虎是，能实现 文件的不冲突 
+    
+    
 
 ## crd hostEndpoint
 

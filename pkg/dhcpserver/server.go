@@ -36,17 +36,25 @@ type dhcpServer struct {
 	ipRangeErr error
 	// previousClients stores the last known state of DHCP clients
 	previousClients []ClientInfo
+	// clusterAgentName is used to generate unique lease file path
+	clusterAgentName string
+	// leaseFilePath is the rendered lease file path
+	leaseFilePath string
 }
 
 // NewDhcpServer creates a new DHCP server instance.
 // Parameters:
 //   - config: DHCP server configuration including interface, subnet, and IP range
+//   - clusterAgentName: name used to generate unique lease file path
 //
 // Returns:
 //   - DhcpServer interface implementation
-func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig) (*dhcpServer, error) {
+func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig, clusterAgentName string) (*dhcpServer, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config cannot be nil")
+	}
+	if clusterAgentName == "" {
+		return nil, fmt.Errorf("clusterAgentName cannot be empty")
 	}
 
 	// Check if interface exists and is up
@@ -118,8 +126,10 @@ func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig) (*dhcpServer, error) {
 
 	// Initialize dhcp server
 	server := &dhcpServer{
-		config:   config,
-		stopChan: make(chan struct{}),
+		config:           config,
+		clusterAgentName: clusterAgentName,
+		stopChan:         make(chan struct{}),
+		leaseFilePath:    fmt.Sprintf(DhcpLeaseFileFormat, clusterAgentName),
 	}
 
 	return server, nil
@@ -159,24 +169,22 @@ func (s *dhcpServer) Start() error {
 		return err
 	}
 
-	// Check if DHCP lease file exists, if so, use it
-	leaseFileStat, err := os.Stat(DhcpLeaseFile)
-	if err == nil && leaseFileStat.Mode().IsRegular() {
-		log.Logger.Infof("Found existing DHCP lease file, will use it: %s", DhcpLeaseFile)
-	} else {
-		log.Logger.Infof("No existing DHCP lease file found, will start from scratch")
-		// Ensure lease directory exists
-		leaseDir := filepath.Dir(DhcpLeaseFile)
-		if _, err := os.Stat(leaseDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(leaseDir, 0755); err != nil {
-				return fmt.Errorf("failed to create lease directory: %v", err)
-			}
+	// Check if lease file exists and create if it doesn't
+	_, err := os.Stat(s.leaseFilePath)
+	if err == nil {
+		log.Logger.Infof("Found existing DHCP lease file, will use it: %s", s.leaseFilePath)
+	} else if os.IsNotExist(err) {
+		// Create lease file if it doesn't exist
+		leaseDir := filepath.Dir(s.leaseFilePath)
+		if err := os.MkdirAll(leaseDir, 0755); err != nil {
+			return fmt.Errorf("failed to create lease directory: %v", err)
 		}
-		// Create empty lease file if it doesn't exist
-		log.Logger.Info("Creating empty DHCP lease file")
-		if err := os.WriteFile(DhcpLeaseFile, []byte(""), 0644); err != nil {
+
+		if err := os.WriteFile(s.leaseFilePath, []byte(""), 0644); err != nil {
 			return fmt.Errorf("failed to create lease file: %v", err)
 		}
+	} else {
+		return fmt.Errorf("failed to check lease file: %v", err)
 	}
 
 	// Ensure log directory exists
@@ -189,7 +197,7 @@ func (s *dhcpServer) Start() error {
 	cmdArgs := []string{
 		"-f",                  // Run in foreground
 		"-cf", DhcpConfigPath, // Config file
-		"-lf", DhcpLeaseFile, // Lease file
+		"-lf", s.leaseFilePath, // Lease file
 		"-pf", "/var/run/dhcpd.pid", // PID file
 		"-tf", DhcpLogFile, // Log file
 	}
@@ -201,6 +209,8 @@ func (s *dhcpServer) Start() error {
 	//}
 
 	cmdArgs = append(cmdArgs, s.config.DhcpServerInterface)
+	log.Logger.Infof("starting DHCP server with command: %s %s", DhcpBinary, strings.Join(cmdArgs, " "))
+
 	s.cmd = exec.Command(DhcpBinary, cmdArgs...)
 
 	// Set up logging to both file and our logger
@@ -276,11 +286,7 @@ func (s *dhcpServer) Stop() error {
 
 // GetClientInfo returns information about DHCP clients
 func (s *dhcpServer) GetClientInfo() ([]ClientInfo, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	log.Logger.Debug("Retrieving DHCP client information")
-	return parseLeasesFile()
+	return GetDhcpClients(s.leaseFilePath)
 }
 
 // GetIPUsageStats calculates current IP allocation statistics.
@@ -350,11 +356,10 @@ func (s *dhcpServer) updateStats() error {
 		return s.ipRangeErr
 	}
 
-	// Get current clients
-	currentClients, err := parseLeasesFile()
+	// Get current client info
+	currentClients, err := GetDhcpClients(s.leaseFilePath)
 	if err != nil {
-		log.Logger.Errorf("failed to parse lease file: %v", err)
-		return err
+		return fmt.Errorf("failed to get current client info: %v", err)
 	}
 
 	log.Logger.Debugf("Current DHCP clients count: %d", len(currentClients))

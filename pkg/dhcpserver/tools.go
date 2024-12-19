@@ -169,9 +169,10 @@ func getNetworkAndMask(cidr string) (string, string, error) {
 	return ipNet.IP.String(), mask, nil
 }
 
-// parseLeasesFile parses the DHCP leases file and returns a list of client info
-func parseLeasesFile() ([]ClientInfo, error) {
-	content, err := os.ReadFile(DhcpLeaseFile)
+// GetDhcpClients parses the DHCP lease file and returns information about active DHCP clients.
+// If the lease file doesn't exist or is empty, returns an empty slice.
+func GetDhcpClients(leaseFilePath string) ([]ClientInfo, error) {
+	content, err := os.ReadFile(leaseFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -308,4 +309,9 @@ func (s *dhcpServer) printDhcpLogTail() error {
 	log.Logger.Info("=======================================")
 
 	return nil
+}
+
+// getLeaseFilePath returns the path to the DHCP lease file for this server instance
+func (s *dhcpServer) getLeaseFilePath() string {
+	return s.leaseFilePath
 }
