@@ -18,6 +18,7 @@ spec:
     {{- if .Values.clusterAgent.agentYaml.nodeName }}
     nodeName: {{ .Values.clusterAgent.agentYaml.nodeName }}
     {{- end }}
+    hostNetwork: {{ .Values.clusterAgent.agentYaml.hostNetwork }}
   {{- with .Values.clusterAgent.endpoint }}
   endpoint:
     port: {{ .port }}

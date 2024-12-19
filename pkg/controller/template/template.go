@@ -17,16 +17,17 @@ import (
 
 // TemplateData contains the data needed to render the templates
 type TemplateData struct {
-	Name              string
-	Namespace         string
-	ClusterName       string
-	Image             string
-	Replicas          int32
-	ServiceAccountName string
-	RoleName          string
-	UnderlayInterface string
-	NodeAffinity      *v1.NodeAffinity
-	NodeName          string
+	Name               string            `json:"name"`
+	Namespace          string            `json:"namespace"`
+	ClusterName        string            `json:"clusterName"`
+	Image              string            `json:"image"`
+	Replicas           int32             `json:"replicas"`
+	ServiceAccountName string            `json:"serviceAccountName"`
+	RoleName           string            `json:"roleName"`
+	UnderlayInterface  string            `json:"underlayInterface"`
+	NodeAffinity       *v1.NodeAffinity  `json:"nodeAffinity,omitempty"`
+	NodeName           string            `json:"nodeName"`
+	HostNetwork        bool              `json:"hostNetwork"`
 }
 
 // toYaml takes an interface, marshals it to yaml, and returns a string

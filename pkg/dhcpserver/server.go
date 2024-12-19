@@ -3,12 +3,14 @@ package dhcpserver
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
-	"sync"
-	"time"
-
 	"path/filepath"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/log"
@@ -42,11 +44,85 @@ type dhcpServer struct {
 //
 // Returns:
 //   - DhcpServer interface implementation
-func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig) DhcpServer {
-	return &dhcpServer{
+func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig) (*dhcpServer, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config cannot be nil")
+	}
+
+	// Check if interface exists and is up
+	iface, err := net.InterfaceByName(config.DhcpServerInterface)
+	if err != nil {
+		return nil, fmt.Errorf("interface %s not found: %v", config.DhcpServerInterface, err)
+	}
+
+	// Check if interface is up
+	if iface.Flags&net.FlagUp == 0 {
+		return nil, fmt.Errorf("interface %s is down", config.DhcpServerInterface)
+	}
+
+	if config.SelfIp != "" {
+		// Check if SelfIP is within the subnet
+		selfIP := net.ParseIP(strings.Split(config.SelfIp, "/")[0])
+		if selfIP == nil {
+			return nil, fmt.Errorf("invalid self IP address: %s", config.SelfIp)
+		}
+		_, subnet, err := net.ParseCIDR(config.Subnet)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse subnet: %v", err)
+		}
+		if !subnet.Contains(selfIP) {
+			return nil, fmt.Errorf("self IP %s is not within subnet %s", config.SelfIp, config.Subnet)
+		}
+
+		// If SelfIP is specified, configure network interface
+		log.Logger.Debugf("Configuring interface %s with IP %s", config.DhcpServerInterface, config.SelfIp)
+		if err := configureInterface(config.DhcpServerInterface, config.SelfIp); err != nil {
+			log.Logger.Errorf("failed to configure interface: %v", err)
+			return nil, err
+		}
+
+	} else {
+		// Get interface addresses
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get addresses for interface %s: %v", config.DhcpServerInterface, err)
+		}
+
+		// Parse the configured subnet
+		_, configuredSubnet, err := net.ParseCIDR(config.Subnet)
+		if err != nil {
+			return nil, fmt.Errorf("invalid subnet %s: %v", config.Subnet, err)
+		}
+
+		// Check if any interface IP matches the configured subnet
+		var hasMatchingIP bool
+		for _, addr := range addrs {
+			// Convert addr to IPNet
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			// Check if the interface IP is in the same subnet
+			if ipNet.Mask.String() == configuredSubnet.Mask.String() &&
+				configuredSubnet.Contains(ipNet.IP) {
+				hasMatchingIP = true
+				break
+			}
+		}
+
+		if !hasMatchingIP {
+			return nil, fmt.Errorf("interface %s has no IP address in subnet %s", config.DhcpServerInterface, config.Subnet)
+		}
+	}
+
+	// Initialize dhcp server
+	server := &dhcpServer{
 		config:   config,
 		stopChan: make(chan struct{}),
 	}
+
+	return server, nil
 }
 
 // Start initializes and starts the DHCP server.
@@ -69,15 +145,6 @@ func (s *dhcpServer) Start() error {
 	if err := s.calculateTotalIPs(); err != nil {
 		s.ipRangeErr = err
 		return fmt.Errorf("failed to calculate total IPs: %v", err)
-	}
-
-	// If SelfIP is specified, configure network interface
-	if s.config.SelfIp != "" {
-		log.Logger.Debugf("Configuring interface %s with IP %s", s.config.DhcpServerInterface, s.config.SelfIp)
-		if err := s.configureInterface(); err != nil {
-			log.Logger.Errorf("failed to configure interface: %v", err)
-			return err
-		}
 	}
 
 	// Ensure DHCP configuration directory exists
@@ -238,10 +305,8 @@ func (s *dhcpServer) GetIPUsageStats() (*IPUsageStats, error) {
 // This routine runs in a separate goroutine and continues until
 // signaled to stop via stopChan.
 func (s *dhcpServer) monitor() {
-	ticker := time.NewTicker(time.Duration(MonitorInterval) * time.Second)
+	ticker := time.NewTicker(MonitorInterval * time.Second)
 	defer ticker.Stop()
-
-	log.Logger.Debugf("Starting DHCP server monitor with interval %d seconds", MonitorInterval)
 
 	for {
 		select {
@@ -249,13 +314,26 @@ func (s *dhcpServer) monitor() {
 			log.Logger.Debugf("DHCP server monitor stopped")
 			return
 		case <-ticker.C:
-			if s.cmd == nil || s.cmd.Process == nil {
-				log.Logger.Infof("DHCP server not running, attempting restart...")
-				s.Start()
+			// Check if process exists and is running
+			needRestart := s.cmd == nil || s.cmd.Process == nil
+			if !needRestart {
+				// Process exists, check if it's still running
+				if err := s.cmd.Process.Signal(syscall.Signal(0)); err != nil {
+					needRestart = true
+				}
 			}
-			// Update IP usage stats
-			if err := s.updateStats(); err != nil {
-				log.Logger.Warnf("Failed to update IP usage stats: %v", err)
+
+			if needRestart {
+				log.Logger.Warnf("DHCP server process not running, restarting...")
+
+				// Print last 50 lines of log file before restart
+				if err := s.printDhcpLogTail(); err != nil {
+					log.Logger.Errorf("Failed to print DHCP log tail: %v", err)
+				}
+
+				if err := s.Start(); err != nil {
+					log.Logger.Errorf("Failed to restart DHCP server: %v", err)
+				}
 			}
 		}
 	}
@@ -303,7 +381,7 @@ func (s *dhcpServer) updateStats() error {
 			log.Logger.Infof("New IP allocated - IP: %s, MAC: %s", ip, client.MAC)
 		} else if prevClient.MAC != client.MAC {
 			// Same IP but different MAC (reassignment)
-			log.Logger.Infof("IP reassigned - IP: %s, Old MAC: %s, New MAC: %s", 
+			log.Logger.Infof("IP reassigned - IP: %s, Old MAC: %s, New MAC: %s",
 				ip, prevClient.MAC, client.MAC)
 		}
 	}
@@ -322,7 +400,7 @@ func (s *dhcpServer) updateStats() error {
 	}
 
 	if newStats.AvailableIPs != s.stats.AvailableIPs {
-		log.Logger.Debugf("IP usage stats updated - Total: %d, Available: %d", 
+		log.Logger.Debugf("IP usage stats updated - Total: %d, Available: %d",
 			newStats.TotalIPs, newStats.AvailableIPs)
 	}
 

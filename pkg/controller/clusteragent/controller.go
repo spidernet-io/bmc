@@ -143,13 +143,14 @@ func (r *ClusterAgentReconciler) createOrUpdateResources(ctx context.Context, cl
 		Name:               name,
 		Namespace:          GlobalControllerNS,
 		ClusterName:        clusterAgent.Name,
-		Image:             agentImage,
-		Replicas:          replicas,
+		Image:              agentImage,
+		Replicas:           replicas,
 		ServiceAccountName: name,
-		RoleName:          name,
+		RoleName:           name,
 		UnderlayInterface:  clusterAgent.Spec.AgentYaml.UnderlayInterface,
-		NodeAffinity:      clusterAgent.Spec.AgentYaml.NodeAffinity,
-		NodeName:          clusterAgent.Spec.AgentYaml.NodeName,
+		NodeAffinity:       clusterAgent.Spec.AgentYaml.NodeAffinity,
+		NodeName:           clusterAgent.Spec.AgentYaml.NodeName,
+		HostNetwork:        clusterAgent.Spec.AgentYaml.HostNetwork,
 	}
 
 	// Render resources from template

@@ -25,8 +25,10 @@ data:
           labels:
             app: bmc-agent
             cluster: {{`{{ .ClusterName }}`}}
+          {{`{{ if .UnderlayInterface }}`}}
           annotations:
             k8s.v1.cni.cncf.io/networks: {{`{{ .UnderlayInterface }}`}}
+          {{`{{ end }}`}}
         spec:
           serviceAccountName: {{`{{ .ServiceAccountName }}`}}
           {{`{{ if .NodeAffinity }}`}}
@@ -36,6 +38,9 @@ data:
           {{`{{ end }}`}}
           {{`{{ if .NodeName }}`}}
           nodeName: {{`{{ .NodeName }}`}}
+          {{`{{ end }}`}}
+          {{`{{ if eq .HostNetwork true }}`}}
+          hostNetwork: true
           {{`{{ end }}`}}
           containers:
           - name: agent

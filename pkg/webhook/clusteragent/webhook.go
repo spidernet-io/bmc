@@ -3,7 +3,6 @@ package clusteragent
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 
@@ -45,88 +44,64 @@ func (w *ClusterAgentWebhook) Default(ctx context.Context, obj runtime.Object) e
 		zap.String("ns", clusterAgent.Namespace),
 		zap.String("action", "default"),
 	)
-	logger.Info("Setting default values for ClusterAgent")
+	logger.Info("Setting initial values for nil fields in ClusterAgent")
 
-	// Set default image from AGENT_IMAGE environment variable if not specified
+	// Initialize AgentYaml fields
 	if clusterAgent.Spec.AgentYaml.Image == "" {
-		agentImage := os.Getenv("AGENT_IMAGE")
-		if agentImage == "" {
-			logger.Error("AGENT_IMAGE environment variable not set")
-			return fmt.Errorf("AGENT_IMAGE environment variable not set")
-		}
-		logger.Infof("Setting default image: %s", agentImage)
-		clusterAgent.Spec.AgentYaml.Image = agentImage
+		clusterAgent.Spec.AgentYaml.Image = ""
 	}
+	if clusterAgent.Spec.AgentYaml.UnderlayInterface == "" {
+		clusterAgent.Spec.AgentYaml.UnderlayInterface = ""
+	}
+	if clusterAgent.Spec.AgentYaml.NodeName == "" {
+		clusterAgent.Spec.AgentYaml.NodeName = ""
+	}
+	// hostNetwork defaults to false
+	// No need to set it as bool defaults to false in Go
 
-	// Set default replicas to 1 if not specified
 	if clusterAgent.Spec.AgentYaml.Replicas == nil {
-		defaultReplicas := int32(1)
-		logger.Infof("Setting default replicas: %d", defaultReplicas)
+		defaultReplicas := int32(0)
 		clusterAgent.Spec.AgentYaml.Replicas = &defaultReplicas
 	}
 
-	// Initialize endpoint if not specified
+	// Initialize Endpoint if nil
 	if clusterAgent.Spec.Endpoint == nil {
-		logger.Info("Initializing endpoint with default values")
 		clusterAgent.Spec.Endpoint = &bmcv1beta1.EndpointConfig{
-			Port:    443,
-			HTTPS:   true,
+			Port:            0,
+			HTTPS:           false,
+			SecretName:      "",
+			SecretNamespace: "",
 		}
-		logger.Infof("Set default endpoint values - Port: %d, HTTPS: %v", 
-			clusterAgent.Spec.Endpoint.Port, 
-			clusterAgent.Spec.Endpoint.HTTPS)
 	} else {
-		// Set default values for endpoint fields if not specified
-		if clusterAgent.Spec.Endpoint.Port == 0 {
-			logger.Info("Setting default endpoint port: 443")
-			clusterAgent.Spec.Endpoint.Port = 443
+		if clusterAgent.Spec.Endpoint.SecretName == "" {
+			clusterAgent.Spec.Endpoint.SecretName = ""
 		}
-		if !clusterAgent.Spec.Endpoint.HTTPS {
-			logger.Info("Setting default endpoint HTTPS: true")
-			clusterAgent.Spec.Endpoint.HTTPS = true
+		if clusterAgent.Spec.Endpoint.SecretNamespace == "" {
+			clusterAgent.Spec.Endpoint.SecretNamespace = ""
 		}
 	}
 
-	// Initialize feature if not specified
+	// Initialize Feature if nil
 	if clusterAgent.Spec.Feature == nil {
-		logger.Info("Initializing feature with default values")
 		clusterAgent.Spec.Feature = &bmcv1beta1.FeatureConfig{
-			EnableDhcpServer: true,
-			DhcpServerConfig: &bmcv1beta1.DhcpServerConfig{
-				EnableDhcpDiscovery: true,
-				DhcpServerInterface: "net1",
-			},
-			RedfishMetrics: false,
-			EnableGuiProxy: true,
-		}
-		logger.Infof("Set default feature values - EnableDhcpServer: %v, DhcpServerConfig: %+v, RedfishMetrics: %v, EnableGuiProxy: %v",
-			clusterAgent.Spec.Feature.EnableDhcpServer,
-			clusterAgent.Spec.Feature.DhcpServerConfig,
-			clusterAgent.Spec.Feature.RedfishMetrics,
-			clusterAgent.Spec.Feature.EnableGuiProxy)
-	} else {
-		// Set default values for feature fields if not specified
-		if !clusterAgent.Spec.Feature.EnableDhcpServer {
-			logger.Info("Setting default feature EnableDhcpServer: true")
-			clusterAgent.Spec.Feature.EnableDhcpServer = true
-		}
-
-		// Initialize DhcpServerConfig if not specified
-		if clusterAgent.Spec.Feature.EnableDhcpServer && clusterAgent.Spec.Feature.DhcpServerConfig == nil {
-			logger.Info("Initializing DhcpServerConfig with default values")
-			clusterAgent.Spec.Feature.DhcpServerConfig = &bmcv1beta1.DhcpServerConfig{
-				EnableDhcpDiscovery: true,
-				DhcpServerInterface: "net1",
-			}
-		}
-
-		if !clusterAgent.Spec.Feature.EnableGuiProxy {
-			logger.Info("Setting default feature EnableGuiProxy: true")
-			clusterAgent.Spec.Feature.EnableGuiProxy = true
+			EnableDhcpServer: false,
+			RedfishMetrics:   false,
+			EnableGuiProxy:   false,
 		}
 	}
 
-	logger.Info("Finished setting default values for ClusterAgent")
+	// Initialize DhcpServerConfig if nil when EnableDhcpServer is true
+	if clusterAgent.Spec.Feature.EnableDhcpServer && clusterAgent.Spec.Feature.DhcpServerConfig == nil {
+		clusterAgent.Spec.Feature.DhcpServerConfig = &bmcv1beta1.DhcpServerConfig{
+			EnableDhcpDiscovery: false,
+			DhcpServerInterface: "",
+			Subnet:              "",
+			IpRange:             "",
+			Gateway:             "",
+			SelfIp:              "",
+		}
+	}
+
 	return nil
 }
 

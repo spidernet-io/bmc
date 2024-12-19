@@ -171,8 +171,10 @@ spec:
                   nodeName:
                     description: NodeName is a request to schedule this pod onto a specific node
                     type: string
+                  hostNetwork:
+                    description: HostNetwork indicates if the agent should use host network
+                    type: boolean
                 required:
-                - underlayInterface
                 - image
                 - replicas
                 type: object

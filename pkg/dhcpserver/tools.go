@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -14,54 +15,53 @@ import (
 
 // configureInterface configures the network interface with the specified IP address
 // Parameters:
-//   - s.config.DhcpServerInterface: name of the network interface to configure
-//   - s.config.SelfIp: optional IP address to assign to the interface
+//   - interfaceName: name of the network interface to configure
+//   - selfIP: IP address to assign to the interface
 //
 // Returns an error if interface configuration fails.
-func (s *dhcpServer) configureInterface() error {
+func configureInterface(interfaceName, selfIP string) error {
 	// Get the network interface by name
-	link, err := netlink.LinkByName(s.config.DhcpServerInterface)
+	link, err := netlink.LinkByName(interfaceName)
 	if err != nil {
-		log.Logger.Errorf("failed to get interface %s: %v", s.config.DhcpServerInterface, err)
+		log.Logger.Errorf("failed to get interface %s: %v", interfaceName, err)
 		return err
 	}
 
 	// Ensure interface is up
 	if err := netlink.LinkSetUp(link); err != nil {
-		log.Logger.Errorf("failed to set interface %s up: %v", s.config.DhcpServerInterface, err)
+		log.Logger.Errorf("failed to set interface %s up: %v", interfaceName, err)
 		return err
 	}
 
 	// Get existing addresses
 	addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
 	if err != nil {
-		log.Logger.Errorf("failed to get addresses for interface %s: %v", s.config.DhcpServerInterface, err)
+		log.Logger.Errorf("failed to get addresses for interface %s: %v", interfaceName, err)
 		return err
 	}
 
 	// Iterate over existing IP addresses and remove them
 	for _, addr := range addrs {
-		log.Logger.Debugf("Removing IP address %s from interface %s", addr.IP, s.config.DhcpServerInterface)
+		log.Logger.Debugf("Removing IP address %s from interface %s", addr.IP, interfaceName)
 		if err := netlink.AddrDel(link, &addr); err != nil {
 			log.Logger.Errorf("failed to remove IP address %s: %v", addr.IP, err)
 			return err
 		}
 	}
 
-	// Add new IP address if specified
-	if s.config.SelfIp != "" {
-		addr, err := netlink.ParseAddr(s.config.SelfIp)
-		if err != nil {
-			log.Logger.Errorf("failed to parse IP address %s: %v", s.config.SelfIp, err)
-			return err
-		}
-
-		if err := netlink.AddrAdd(link, addr); err != nil {
-			log.Logger.Errorf("failed to add IP address %s: %v", s.config.SelfIp, err)
-			return err
-		}
-		log.Logger.Debugf("Added IP address %s to interface %s", s.config.SelfIp, s.config.DhcpServerInterface)
+	// Parse and add the new IP address
+	addr, err := netlink.ParseAddr(selfIP)
+	if err != nil {
+		log.Logger.Errorf("failed to parse IP address %s: %v", selfIP, err)
+		return err
 	}
+
+	if err := netlink.AddrAdd(link, addr); err != nil {
+		log.Logger.Errorf("failed to add IP address %s: %v", selfIP, err)
+		return err
+	}
+	log.Logger.Debugf("Added IP address %s to interface %s", selfIP, interfaceName)
+
 	return nil
 }
 
@@ -81,11 +81,11 @@ func (s *dhcpServer) generateConfig() error {
 	// Convert IP range format from "start-end" to "start end"
 	ipRange := strings.Replace(s.config.IpRange, "-", " ", 1)
 	config := fmt.Sprintf(DhcpConfigTemplate,
-		network,    // subnet
-		netmask,    // netmask in subnet declaration
-		ipRange,    // range
-		s.config.Gateway,  // routers
-		netmask,    // subnet-mask option
+		network,          // subnet
+		netmask,          // netmask in subnet declaration
+		ipRange,          // range
+		s.config.Gateway, // routers
+		netmask,          // subnet-mask option
 	)
 
 	log.Logger.Debugf("Generated DHCP configuration:\n\n%s", config)
@@ -197,13 +197,13 @@ func parseLeasesFile() ([]ClientInfo, error) {
 		// Start of a lease block
 		if strings.HasPrefix(line, "lease") {
 			if currentClient != nil {
-				log.Logger.Debugf("Adding client: IP=%s, MAC=%s, Active=%v", 
+				log.Logger.Debugf("Adding client: IP=%s, MAC=%s, Active=%v",
 					currentClient.IP, currentClient.MAC, currentClient.Active)
 				clients = append(clients, *currentClient)
 			}
 			currentClient = &ClientInfo{}
 			inLeaseBlock = true
-			
+
 			// Extract IP address
 			parts := strings.Split(line, " ")
 			if len(parts) >= 2 {
@@ -246,7 +246,7 @@ func parseLeasesFile() ([]ClientInfo, error) {
 			if strings.Contains(line, "starts") {
 				parts := strings.Fields(line)
 				if len(parts) >= 4 {
-					currentClient.StartTime = strings.TrimSuffix(parts[2] + " " + parts[3], ";")
+					currentClient.StartTime = strings.TrimSuffix(parts[2]+" "+parts[3], ";")
 				}
 			}
 
@@ -254,7 +254,7 @@ func parseLeasesFile() ([]ClientInfo, error) {
 			if strings.Contains(line, "ends") {
 				parts := strings.Fields(line)
 				if len(parts) >= 4 {
-					currentClient.EndTime = strings.TrimSuffix(parts[2] + " " + parts[3], ";")
+					currentClient.EndTime = strings.TrimSuffix(parts[2]+" "+parts[3], ";")
 				}
 			}
 		}
@@ -286,4 +286,26 @@ func parseDhcpTime(line string) (time.Time, error) {
 
 	// Parse the combined string
 	return time.Parse("2006/01/02 15:04:05", timeStr)
+}
+
+// printDhcpLogTail prints the last 50 lines of the DHCP server log file
+func (s *dhcpServer) printDhcpLogTail() error {
+	// Check if log file exists
+	if _, err := os.Stat(DhcpLogFile); os.IsNotExist(err) {
+		return fmt.Errorf("DHCP log file not found: %s", DhcpLogFile)
+	}
+
+	// Use tail command to get last 50 lines
+	cmd := exec.Command("tail", "-n", "50", DhcpLogFile)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to tail DHCP log file: %v", err)
+	}
+
+	// Print the log lines with a header
+	log.Logger.Info("=== Last 50 lines of DHCP server log ===")
+	log.Logger.Info(string(output))
+	log.Logger.Info("=======================================")
+
+	return nil
 }

@@ -26,8 +26,10 @@ clusterAgent:
       pullPolicy: IfNotPresent
       # tag will be overridden by version from Chart.yaml
       tag: ""
-    # Required: network interface configuration
-    underlayInterface: "kube-system/macvlan-pod-network"
+    # Optional: network interface configuration
+    underlayInterface: ""
+    # Optional: Use host network for agent pods
+    hostNetwork: false
     # Optional: Node scheduling configuration
     # Option 1: Use nodeAffinity for flexible node selection
     # nodeAffinity:

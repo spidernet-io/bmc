@@ -33,6 +33,7 @@ deploy:
 	@echo "Images loaded successfully"
 	@echo "Deploying application using Helm chart..."
 	- helm uninstall bmc -n bmc &>/dev/null || true
+	@echo "for macvlan deployment"
 	helm install bmc ../chart \
 		--namespace bmc \
 		--create-namespace \
@@ -42,16 +43,38 @@ deploy:
 		--set clusterAgent.agentYaml.image.repository=$(AGENT_IMAGE) \
 		--set clusterAgent.agentYaml.image.tag=$(VERSION) \
 		--set clusterAgent.endpoint.https=false \
-		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
 		--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker" \
+		--set clusterAgent.agentYaml.hostNetwork=false \
+		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
+		--set clusterAgent.feature.dhcpServerConfig.dhcpServerInterface="net1" \
 		--set clusterAgent.feature.dhcpServerConfig.subnet="192.168.0.0/24" \
 		--set clusterAgent.feature.dhcpServerConfig.ipRange="192.168.0.10-192.168.0.100" \
 		--set clusterAgent.feature.dhcpServerConfig.gateway="192.168.0.1" \
 		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2/24" \
-		--set clusterAgent.endpoint.username="test" \
-		--set clusterAgent.endpoint.password="abc" \
+		--set clusterAgent.endpoint.username="" \
+		--set clusterAgent.endpoint.password="" \
 		--set clusterAgent.endpoint.port=8000
-		
+	# @echo "for host network deployment" 	
+	# helm install bmc ../chart \
+	# 	--namespace bmc \
+	# 	--create-namespace \
+	# 	--wait \
+	# 	--set image.repository=$(CONTROLLER_IMAGE) \
+	# 	--set image.tag=$(VERSION) \
+	# 	--set clusterAgent.agentYaml.image.repository=$(AGENT_IMAGE) \
+	# 	--set clusterAgent.agentYaml.image.tag=$(VERSION) \
+	# 	--set clusterAgent.endpoint.https=false \
+	# 	--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker" \
+	# 	--set clusterAgent.agentYaml.hostNetwork=true \
+	# 	--set clusterAgent.agentYaml.underlayInterface="" \
+	# 	--set clusterAgent.feature.dhcpServerConfig.dhcpServerInterface="eth0" \
+	# 	--set clusterAgent.feature.dhcpServerConfig.selfIp="" \
+	# 	--set clusterAgent.feature.dhcpServerConfig.subnet="172.18.0.0/16" \
+	# 	--set clusterAgent.feature.dhcpServerConfig.ipRange="172.18.0.100-172.18.0.200" \
+	# 	--set clusterAgent.feature.dhcpServerConfig.gateway="172.18.0.10" \
+	# 	--set clusterAgent.endpoint.username="test" \
+	# 	--set clusterAgent.endpoint.password="abc" \
+	# 	--set clusterAgent.endpoint.port=8000
 
 # Clean up kind cluster
 clean:

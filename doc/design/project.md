@@ -37,6 +37,7 @@ spec:
     image: ""
     replicas: 1
     nodeAffinity
+    hostNetwork: false 
   endpoint:
     port: 80
     secretName: "abc"

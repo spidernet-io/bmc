@@ -30,8 +30,8 @@ type ClusterAgentSpec struct {
 // AgentConfig defines the configuration for the agent
 type AgentConfig struct {
 	// UnderlayInterface specifies the network interface configuration for underlay network
-	// +kubebuilder:validation:Required
-	UnderlayInterface string `json:"underlayInterface"`
+	// +optional
+	UnderlayInterface string `json:"underlayInterface,omitempty"`
 
 	// Image is the agent container image
 	// +optional
@@ -49,6 +49,10 @@ type AgentConfig struct {
 	// NodeName is a request to schedule this pod onto a specific node
 	// +optional
 	NodeName string `json:"nodeName,omitempty"`
+
+	// HostNetwork indicates if the agent should use host network
+	// +optional
+	HostNetwork bool `json:"hostNetwork,omitempty"`
 }
 
 // EndpointConfig defines the endpoint configuration for the agent

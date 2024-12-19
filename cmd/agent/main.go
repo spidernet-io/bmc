@@ -60,7 +60,12 @@ func main() {
 	var dhcpSrv dhcpserver.DhcpServer
 	if agentConfig.AgentObjSpec.Feature.EnableDhcpServer {
 		log.Logger.Info("Starting DHCP server...")
-		dhcpSrv = dhcpserver.NewDhcpServer(agentConfig.AgentObjSpec.Feature.DhcpServerConfig)
+		var err error
+		dhcpSrv, err = dhcpserver.NewDhcpServer(agentConfig.AgentObjSpec.Feature.DhcpServerConfig)
+		if err != nil {
+			log.Logger.Errorf("Failed to initialize DHCP server: %v", err)
+			os.Exit(1)
+		}
 		if err := dhcpSrv.Start(); err != nil {
 			log.Logger.Errorf("Failed to start DHCP server: %v", err)
 			os.Exit(1)
