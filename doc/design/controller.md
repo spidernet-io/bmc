@@ -23,9 +23,13 @@ spec:
   port: 80  // 用户可不填，默认为 80
 ```
 
-请在 @crd.yaml 中生成 crd ， 在 pkg/webhook/hostendpoint 下 实现相关的 webhook，在 @cmd/controller 中集成相关的逻辑
+请在 @crd.yaml 中生成 crd ， 
+在 pkg/webhook/hostendpoint 下 实现相关的 webhook，
+在 @cmd/controller 中集成相关的逻辑
 需要在 @chart/templates/webhook.yaml  下 创建相关的 webhook 对象，  使用 helm genCA 来生成 CA 证书的方式
+该对象只允许创建，不允许修改
 
 请不要修改和本问题无关的其他代码
+
 
 

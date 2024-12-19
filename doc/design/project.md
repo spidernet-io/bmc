@@ -163,3 +163,9 @@ agent pod 中的 进程 golang 代码放在 cmd/agent 目录下， 所有的代�
 
 在工程的所有 golang 代码目录下，创建必要的 readme.md 文件，对相关目录下的代码做简要的设计说明
 
+## 坑
+
+- 从一开始，注意 使用 go get -u ./... 升级所有库到最新 ，否则一些 api 兼容问题， ai 是很难解决的
+
+- 注意 api 定义的 文件夹路径，使用 code gen 生成 client sdk  ， 不要用 ai 来生成
+

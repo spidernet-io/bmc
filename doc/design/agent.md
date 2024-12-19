@@ -92,27 +92,88 @@ root@bmc-e2e-worker:/# cat /var/lib/dhcp/bmc-clusteragent-dhcpd.leases
             client-hostname "redfish-redfish-mockup-ff6b7749c-7njhv";
           }
 
-## crd hostEndpoint
+## hoststatus 管理模块
 
-agent 组件 的 环境变量 CLUSTERAGENT_NAME 值 指向了 自己的  crd clusterAgent 实例 ，代表了一些工作配置
-当前，  @cmd/agent 中已经通过 变量 agentConfig 获取到了这些配置 
+新建定义一个 crd hoststatus
 
-需要实现一个 crd hostEndpoint ， 它的定义如下
-
+```
 apiVersion: bmc.spidernet.io/v1beta1
-kind: hostEndpoint
+kind: hostStatus
 metadata:
-  name: test
-spec:
-  ipAddr: "192.168.0.10" //必填， agent 的 validate webhook 进行校验， 它要属于 agent clusterAgent 实例中的 spec.dhcpServerConfig.subnet="192.168.0.0/24"   中的子网
-  secretName: "test" // 可选，nil 时 agent 的 muatating webhook 初始化为 空串。 
-  secretNamespace: "bmc" // 可选，nil 时 agent 的 muatating webhook 初始化为 空串。当 secretName 和 secretNamespace 都不为空时， agent 的 validate webhook 进行校验 ， 确认所对应的 secrect 存在， 且 secrect 中的数据 有 username 和 password 的 key
-  https: true // 用户可不填，默认为 true
-  port: 80  // 用户可不填，默认为 80
+  name: agentname-ipaddress
+  ownerReferences:
+  - apiVersion: bmc.spidernet.io/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: hostEndpoint
+    name: hostendpointname
+status:
+  healthReady: true  // 必须有值
+  clusterAgent: "default"   // 必须有值
+  lastUpdateTime: "2024-12-19T07:14:33Z"
+  basic:  // 必须有值
+    type: "dhcp"/"hostEndpoint"  // 必须有值
+    ipAddr: "192.168.0.10"    // 必须有值
+    secretName: "test"   //可有值，可为空
+    secretNamespace: "bmc"    //可有值，可为空
+    https: true     // 必须有值
+    port: 80    // 必须有值
+    mac: "00:0c:29:2f:3a:2a"  //可有值，可为空
+  info:  // 必须有值
+    os: "ubuntu"  //可有值，可为空
+```
 
-请在 @crds.yaml 中生成 crd ， 在 pkg/webhook/hostendpoing 下 使用 controller-runtime 提供的标准 webhook 接口 实现相关的 webhook，在 @cmd/agent 中集成相关的逻辑
-需要在 @chart/templates  下 创建相关的 webhook 对象，  需要参考 @webhook.yaml  中使用 helm genCA 来生成 CA 证书的方式
+请在 @crd.yaml 中生成该 crd
+请在 @templates/agent-templates.yaml 中的 agent role 中赋予 hoststatus 的权限
+更新 crd hostStatus 在 @pkg/apis/bmc/v1beta1 中的相关定义
 
-所有日志，使用 @pkg/log  模块，并使用 printf 风格
+@pkg/agent/hoststatus 目录下 创建一个 hoststatus 维护模块，它 通过 interface{} 对外暴露使用，它应该有如下接口
+
+（1）创建  维护模块 实例
+      传入 agent的 agentConfig 对象 作为 工作参数
+      传入 k8sClient
+
+（2）运行接口
+      * 它 启动一个携程， list watch 所有的 hostEndpoint 实例，当有 新的 hostEndpoint 对象时
+          确认 hostEndpoint 对象 的 对应的 hostStatus 对象存在， 如果不存在，就创建一个
+             hostStatus 对象的创建，遵循
+                  hostStatus metadata.name = hostEndpoint spec.clusterAgent +  hostEndpoint spec.ipAddr(把 . 替换成 -)
+                  hostStatus metadata.ownerReferences 关联到 该  hostEndpoint 。 从而可实现 级联删除
+                  hostStatus status.healthReady = false
+                  hostStatus status.clusterAgent = hostEndpoint spec.clusterAgent
+                  hostStatus status.basic.type = "hostEndpoint"
+                  hostStatus status.basic.ipAddr = hostEndpoint spec.ipAddr
+                  hostStatus status.basic.secretName = hostEndpoint spec.secretName
+                  hostStatus status.basic.secretNamespace = hostEndpoint spec.secretNamespace
+                  hostStatus status.basic.https = hostEndpoint spec.https
+                  hostStatus status.basic.port = hostEndpoint spec.port
+                  hostStatus status.basic.mac = ""
+                  刷新 hostStatus status.lastUpdateTime
+
+      * 它 启动一个携程，通过 两个 channel  接收 来自 @pkg/dhcpserver/server.go 中的  func (s *dhcpServer) updateStats() error 中的 事件 通知， 获取 新增 和 删除 的 client 信息
+            当有新的 dhcp client 分配了 ip ， 把么 创建对应的 hostStatus 对象
+                  hostStatus metadata.name = agentConfig 中的 clusterAgentName + 新 client 的 ip (把 . 替换成 -)
+                  hostStatus metadata.ownerReferences 关联到 空
+                  hostStatus status.healthReady = false
+                  hostStatus status.clusterAgent = agentConfig 中的 clusterAgentName
+                  hostStatus status.basic.type = "dhcp"
+                  hostStatus status.basic.ipAddr = 新 client 的 ip
+                  hostStatus status.basic.secretName = agentConfig 中 AgentObjSpec.Endpoint.secretName
+                  hostStatus status.basic.secretNamespace = agentConfig 中 AgentObjSpec.Endpoint.secretNamespace
+                  hostStatus status.basic.https =  agentConfig 中 AgentObjSpec.Endpoint.https
+                  hostStatus status.basic.port = agentConfig 中 AgentObjSpec.Endpoint.port
+                  hostStatus status.basic.mac = 新 client 的 mac
+                  刷新 hostStatus status.lastUpdateTime
+
+            当有 dhcp client 被释放 ip ， 把么 删除 对应  hostStatus 对象
+
+    * 它 启动一个携程， 监听所有的  hostStatus 对象 ，实现对  hostStatus status.info  的信息维护 （更新函数中的代码。暂时为空，只打印 监听到 hostStatus 对象 变化的日志 ）
+
+
+（3）停止接口
+
+在 @cmd/agent 集成以上 hoststatus 维护模块， 实现它的 启动 和 停止
 
 请不要修改和本问题无关的其他代码
+
+
