@@ -22,11 +22,9 @@ spec:
   endpoint:
     port: {{ .port }}
     https: {{ .https }}
-    {{- if .secretName }}
-    secretName: {{ .secretName }}
-    {{- end }}
-    {{- if .secretNamespace }}
-    secretNamespace: {{ .secretNamespace }}
+    {{- if and $.Values.clusterAgent.endpoint.username $.Values.clusterAgent.endpoint.password }}
+    secretName: {{ $.Release.Name }}-credentials
+    secretNamespace: {{ $.Release.Namespace }}
     {{- end }}
   {{- end }}
   {{- with .Values.clusterAgent.feature }}

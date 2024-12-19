@@ -126,6 +126,8 @@ func (c *AgentConfig) GetDetailString() string {
 		if c.AgentObjSpec.Endpoint.SecretNamespace != "" {
 			details.WriteString(fmt.Sprintf("    SecretNamespace: %s\n", c.AgentObjSpec.Endpoint.SecretNamespace))
 		}
+		details.WriteString(fmt.Sprintf("    Username: %v\n", c.Username != ""))
+		details.WriteString(fmt.Sprintf("    Password: %v\n", c.Password != ""))
 	}
 
 	// Feature details

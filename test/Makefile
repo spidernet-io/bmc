@@ -47,7 +47,11 @@ deploy:
 		--set clusterAgent.feature.dhcpServerConfig.subnet="192.168.0.0/24" \
 		--set clusterAgent.feature.dhcpServerConfig.ipRange="192.168.0.10-192.168.0.100" \
 		--set clusterAgent.feature.dhcpServerConfig.gateway="192.168.0.1" \
-		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2/24"
+		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2/24" \
+		--set clusterAgent.endpoint.username="test" \
+		--set clusterAgent.endpoint.password="abc" \
+		--set clusterAgent.endpoint.port=8000
+		
 
 # Clean up kind cluster
 clean:

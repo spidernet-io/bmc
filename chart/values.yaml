@@ -47,9 +47,9 @@ clusterAgent:
     port: 443
     # Enable HTTPS (default: true)
     https: true
-    # Optional: TLS certificate configuration
-    # secretName: ""
-    # secretNamespace: ""
+    # Optional: Authentication credentials
+    username: "admin"
+    password: "secret"
 
   # Optional: Feature configuration
   feature:
