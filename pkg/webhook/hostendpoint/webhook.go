@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 )

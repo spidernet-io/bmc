@@ -99,7 +99,7 @@ agent 组件 的 环境变量 CLUSTERAGENT_NAME 值 指向了 自己的  crd clu
 
 需要实现一个 crd hostEndpoint ， 它的定义如下
 
-apiVersion: bmc.io/v1beta1
+apiVersion: bmc.spidernet.io/v1beta1
 kind: hostEndpoint
 metadata:
   name: test
@@ -116,4 +116,3 @@ spec:
 所有日志，使用 @pkg/log  模块，并使用 printf 风格
 
 请不要修改和本问题无关的其他代码
-

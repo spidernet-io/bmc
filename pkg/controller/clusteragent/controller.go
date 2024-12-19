@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sync"
 
-	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/controller/template"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"go.uber.org/zap"

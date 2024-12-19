@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	controller "github.com/spidernet-io/bmc/pkg/controller/clusteragent"
 	"github.com/spidernet-io/bmc/pkg/log"
 	clusteragentwebhook "github.com/spidernet-io/bmc/pkg/webhook/clusteragent"

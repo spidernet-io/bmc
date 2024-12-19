@@ -1,4 +1,4 @@
-apiVersion: bmc.io/v1beta1
+apiVersion: bmc.spidernet.io/v1beta1
 kind: ClusterAgent
 metadata:
   name: bmc-clusteragent

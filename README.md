@@ -57,7 +57,7 @@ helm install -f values.yaml bmc-operator bmc/bmc-operator
 1. Create a BMC Server instance:
 
 ```yaml
-apiVersion: bmc.io/v1beta1
+apiVersion: bmc.spidernet.io/v1beta1
 kind: bmcServer
 metadata:
   name: test-bmc
