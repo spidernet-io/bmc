@@ -27,7 +27,7 @@
 
 2.helm  安装 了如下 crd
 
-apiVersion: bmc.io/v1beta1
+apiVersion: bmc.spidernet.io/v1beta1
 kind: clusterAgent
 metadata:
   name: test

@@ -79,7 +79,7 @@ clusterAgent:
   # Storage configuration for DHCP lease files
   storage:
     # Storage type: "pvc" or "hostPath"
-    type: "hostPath"
+    type: "pvc"
     # PVC configuration (used when type is "pvc")
     # this should be used when production environment
     pvc:
@@ -91,7 +91,7 @@ clusterAgent:
       accessModes:
         - ReadWriteOnce
     # HostPath configuration (used when type is "hostPath")
-    # this should be used only when POC environment
+    # this should be used only when POC environment, and it should designate the node name
     hostPath:
       # Path on the host
       path: "/var/lib/dhcp"

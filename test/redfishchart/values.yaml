@@ -7,6 +7,12 @@ nodeName: bmc-e2e-worker
 # Network interface name for DHCP client
 networkInterface: net1
 
+# ip for underlay interface. if empty, it will get ip address from dhcp server
+staticIp: ""
+staticMask: ""
+#staticIp: "192.168.0.50"
+#staticMask: "24"
+
 # Pod annotations
 underlayMultusCNI: macvlan-conf
 

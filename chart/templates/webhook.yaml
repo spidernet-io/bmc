@@ -36,9 +36,6 @@ webhooks:
       path: /validate-bmc-spidernet-io-v1beta1-clusteragent
       port: {{ .Values.webhook.webhookPort }}
     caBundle: {{ $ca.Cert | b64enc }}
-  namespaceSelector:
-    matchLabels:
-      kubernetes.io/metadata.name: {{ .Release.Namespace }}
   rules:
   - apiGroups: ["bmc.spidernet.io"]
     apiVersions: ["v1beta1"]
@@ -64,11 +61,56 @@ webhooks:
       path: /mutate-bmc-spidernet-io-v1beta1-clusteragent
       port: {{ .Values.webhook.webhookPort }}
     caBundle: {{ $ca.Cert | b64enc }}
-  namespaceSelector:
-    matchLabels:
-      kubernetes.io/metadata.name: {{ .Release.Namespace }}
   rules:
   - apiGroups: ["bmc.spidernet.io"]
     apiVersions: ["v1beta1"]
     operations: ["CREATE", "UPDATE"]
     resources: ["clusteragents"]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ .Release.Name }}-hostendpoint-validating-webhook
+webhooks:
+  - name: vhostendpoint.kb.io
+    rules:
+      - apiGroups: ["bmc.spidernet.io"]
+        apiVersions: ["v1beta1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["hostendpoints"]
+        scope: "Cluster"
+    clientConfig:
+      service:
+        name: {{ .Release.Name }}-webhook-service
+        namespace: {{ .Release.Namespace }}
+        path: /validate-bmc-spidernet-io-v1beta1-hostendpoint
+        port: {{ .Values.webhook.webhookPort }}
+      caBundle: {{ $ca.Cert | b64enc }}
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 5
+    failurePolicy: Fail
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ .Release.Name }}-hostendpoint-mutating-webhook
+webhooks:
+  - name: mhostendpoint.kb.io
+    rules:
+      - apiGroups: ["bmc.spidernet.io"]
+        apiVersions: ["v1beta1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["hostendpoints"]
+        scope: "Cluster"
+    clientConfig:
+      service:
+        name: {{ .Release.Name }}-webhook-service
+        namespace: {{ .Release.Namespace }}
+        path: /mutate-bmc-spidernet-io-v1beta1-hostendpoint
+        port: {{ .Values.webhook.webhookPort }}
+      caBundle: {{ $ca.Cert | b64enc }}
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 5
+    failurePolicy: Fail

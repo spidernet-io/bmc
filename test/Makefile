@@ -12,7 +12,7 @@ init:
 	@echo "Creating kind cluster with name: $(KIND_CLUSTER_NAME)"
 	kind create cluster --name $(KIND_CLUSTER_NAME) --config $(KIND_CONFIG)
 	@echo "Kind cluster created successfully"
-	@echo "storageclass local-path does not allow pod with specified NodeName, so make all pods to run on the worker node"
+	@echo "storageclass local-path does not allow pods with a specified NodeName, so it makes all pods to run on the worker node"
 	kubectl taint node $(KIND_CLUSTER_NAME)-control-plane local-path=nopod:NoSchedule
 
 
@@ -23,8 +23,13 @@ installDeps:
 
 installDepsRedfish:
 	@echo "Installing redfish..."
-	chmod +x scripts/install-redfish.sh
-	E2E_CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./scripts/install-redfish.sh
+	chmod +x scripts/install-redfish-dhcp.sh
+	chmod +x scripts/install-redfish-static.sh
+	E2E_CLUSTER_NAME=$(KIND_CLUSTER_NAME) UNDERLAY_CNI="spiderpool/eth0-macvlan" \
+			./scripts/install-redfish-dhcp.sh
+	E2E_CLUSTER_NAME=$(KIND_CLUSTER_NAME)  UNDERLAY_CNI="spiderpool/eth0-macvlan" \
+			STATIC_IP="192.168.0.50/24"  \
+			./scripts/install-redfish-static.sh
 
 
 # Deploy application to kind cluster
@@ -49,14 +54,13 @@ deploy:
 		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
 		--set clusterAgent.feature.dhcpServerConfig.dhcpServerInterface="net1" \
 		--set clusterAgent.feature.dhcpServerConfig.subnet="192.168.0.0/24" \
-		--set clusterAgent.feature.dhcpServerConfig.ipRange="192.168.0.10-192.168.0.100" \
+		--set clusterAgent.feature.dhcpServerConfig.ipRange="192.168.0.100-192.168.0.200" \
 		--set clusterAgent.feature.dhcpServerConfig.gateway="192.168.0.1" \
 		--set clusterAgent.feature.dhcpServerConfig.selfIp="192.168.0.2/24" \
 		--set clusterAgent.endpoint.username="" \
 		--set clusterAgent.endpoint.password="" \
 		--set clusterAgent.endpoint.port=8000 \
 		--set clusterAgent.storage.type="pvc"
-	#	--set clusterAgent.agentYaml.nodeName="$(KIND_CLUSTER_NAME)-worker" \
 
 	# @echo "for host network deployment" 	
 	# helm install bmc ../chart \

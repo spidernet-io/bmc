@@ -17,7 +17,8 @@ import (
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
 	controller "github.com/spidernet-io/bmc/pkg/controller/clusteragent"
 	"github.com/spidernet-io/bmc/pkg/log"
-	webhook "github.com/spidernet-io/bmc/pkg/webhook/clusteragent"
+	clusteragentwebhook "github.com/spidernet-io/bmc/pkg/webhook/clusteragent"
+	hostendpointwebhook "github.com/spidernet-io/bmc/pkg/webhook/hostendpoint"
 )
 
 var (
@@ -73,8 +74,14 @@ func main() {
 	}
 
 	// Setup webhook
-	if err = (&webhook.ClusterAgentWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&clusteragentwebhook.ClusterAgentWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		log.Logger.Errorf("unable to create webhook %s: %v", "ClusterAgent", err)
+		os.Exit(1)
+	}
+
+	// Setup HostEndpoint webhook
+	if err = (&hostendpointwebhook.HostEndpointWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+		log.Logger.Errorf("unable to create webhook %s: %v", "HostEndpoint", err)
 		os.Exit(1)
 	}
 

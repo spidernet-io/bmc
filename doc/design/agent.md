@@ -94,4 +94,26 @@ root@bmc-e2e-worker:/# cat /var/lib/dhcp/bmc-clusteragent-dhcpd.leases
 
 ## crd hostEndpoint
 
+agent 组件 的 环境变量 CLUSTERAGENT_NAME 值 指向了 自己的  crd clusterAgent 实例 ，代表了一些工作配置
+当前，  @cmd/agent 中已经通过 变量 agentConfig 获取到了这些配置 
+
+需要实现一个 crd hostEndpoint ， 它的定义如下
+
+apiVersion: bmc.io/v1beta1
+kind: hostEndpoint
+metadata:
+  name: test
+spec:
+  ipAddr: "192.168.0.10" //必填， agent 的 validate webhook 进行校验， 它要属于 agent clusterAgent 实例中的 spec.dhcpServerConfig.subnet="192.168.0.0/24"   中的子网
+  secretName: "test" // 可选，nil 时 agent 的 muatating webhook 初始化为 空串。 
+  secretNamespace: "bmc" // 可选，nil 时 agent 的 muatating webhook 初始化为 空串。当 secretName 和 secretNamespace 都不为空时， agent 的 validate webhook 进行校验 ， 确认所对应的 secrect 存在， 且 secrect 中的数据 有 username 和 password 的 key
+  https: true // 用户可不填，默认为 true
+  port: 80  // 用户可不填，默认为 80
+
+请在 @crds.yaml 中生成 crd ， 在 pkg/webhook/hostendpoing 下 使用 controller-runtime 提供的标准 webhook 接口 实现相关的 webhook，在 @cmd/agent 中集成相关的逻辑
+需要在 @chart/templates  下 创建相关的 webhook 对象，  需要参考 @webhook.yaml  中使用 helm genCA 来生成 CA 证书的方式
+
+所有日志，使用 @pkg/log  模块，并使用 printf 风格
+
+请不要修改和本问题无关的其他代码
 

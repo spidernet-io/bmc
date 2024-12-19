@@ -277,3 +277,53 @@ spec:
       jsonPath: .metadata.creationTimestamp
     subresources:
       status: {}
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: hostendpoints.bmc.spidernet.io
+spec:
+  group: bmc.spidernet.io
+  names:
+    kind: HostEndpoint
+    listKind: HostEndpointList
+    plural: hostendpoints
+    singular: hostendpoint
+  scope: Cluster
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: ["spec"]
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              required: ["ipAddr"]
+              properties:
+                clusterAgent:
+                  type: string
+                  default: ""
+                ipAddr:
+                  type: string
+                secretName:
+                  type: string
+                  default: ""
+                secretNamespace:
+                  type: string
+                  default: ""
+                https:
+                  type: boolean
+                  default: true
+                port:
+                  type: integer
+                  default: 80
