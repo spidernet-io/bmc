@@ -32,6 +32,8 @@ type dhcpServer struct {
 	totalIPs int
 	// ipRangeErr stores any error encountered while parsing IP range
 	ipRangeErr error
+	// previousClients stores the last known state of DHCP clients
+	previousClients []ClientInfo
 }
 
 // NewDhcpServer creates a new DHCP server instance.
@@ -270,24 +272,62 @@ func (s *dhcpServer) updateStats() error {
 		return s.ipRangeErr
 	}
 
-	clients, err := parseLeasesFile()
+	// Get current clients
+	currentClients, err := parseLeasesFile()
 	if err != nil {
 		log.Logger.Errorf("failed to parse lease file: %v", err)
 		return err
 	}
 
-	// Calculate new stats
+	log.Logger.Debugf("Current DHCP clients count: %d", len(currentClients))
+	for _, client := range currentClients {
+		log.Logger.Debugf("Active client - IP: %s, MAC: %s, Active: %v", client.IP, client.MAC, client.Active)
+	}
+
+	// Create maps for easy lookup
+	currentMap := make(map[string]ClientInfo)
+	previousMap := make(map[string]ClientInfo)
+
+	for _, client := range currentClients {
+		currentMap[client.IP] = client
+	}
+	for _, client := range s.previousClients {
+		previousMap[client.IP] = client
+	}
+
+	// Check for IP and MAC changes
+	for ip, client := range currentMap {
+		prevClient, exists := previousMap[ip]
+		if !exists {
+			// New IP allocation
+			log.Logger.Infof("New IP allocated - IP: %s, MAC: %s", ip, client.MAC)
+		} else if prevClient.MAC != client.MAC {
+			// Same IP but different MAC (reassignment)
+			log.Logger.Infof("IP reassigned - IP: %s, Old MAC: %s, New MAC: %s", 
+				ip, prevClient.MAC, client.MAC)
+		}
+	}
+
+	for ip, client := range previousMap {
+		if _, exists := currentMap[ip]; !exists {
+			// IP released
+			log.Logger.Infof("IP released - IP: %s, MAC: %s", ip, client.MAC)
+		}
+	}
+
+	// Calculate and update stats
 	newStats := IPUsageStats{
 		TotalIPs:     s.totalIPs,
-		AvailableIPs: s.totalIPs - len(clients),
+		AvailableIPs: s.totalIPs - len(currentClients),
 	}
 
-	// Only log if stats have changed
 	if newStats.AvailableIPs != s.stats.AvailableIPs {
-		log.Logger.Debugf("IP usage stats updated - Total: %d, Available: %d", newStats.TotalIPs, newStats.AvailableIPs)
+		log.Logger.Debugf("IP usage stats updated - Total: %d, Available: %d", 
+			newStats.TotalIPs, newStats.AvailableIPs)
 	}
 
-	// Update stats
+	// Update previous clients and stats
+	s.previousClients = currentClients
 	s.stats = newStats
 	return nil
 }

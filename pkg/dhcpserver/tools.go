@@ -179,6 +179,8 @@ func parseLeasesFile() ([]ClientInfo, error) {
 		return nil, err
 	}
 
+	log.Logger.Debugf("Parsing DHCP lease file content:\n%s", string(content))
+
 	var clients []ClientInfo
 	lines := strings.Split(string(content), "\n")
 	var currentClient *ClientInfo
@@ -186,10 +188,17 @@ func parseLeasesFile() ([]ClientInfo, error) {
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		log.Logger.Debugf("Processing line: %s", line)
 
 		// Start of a lease block
 		if strings.HasPrefix(line, "lease") {
 			if currentClient != nil {
+				log.Logger.Debugf("Adding client: IP=%s, MAC=%s, Active=%v", 
+					currentClient.IP, currentClient.MAC, currentClient.Active)
 				clients = append(clients, *currentClient)
 			}
 			currentClient = &ClientInfo{}
@@ -198,7 +207,8 @@ func parseLeasesFile() ([]ClientInfo, error) {
 			// Extract IP address
 			parts := strings.Split(line, " ")
 			if len(parts) >= 2 {
-				currentClient.IP = strings.TrimSpace(parts[1])
+				currentClient.IP = strings.TrimSpace(strings.TrimSuffix(parts[1], "{"))
+				log.Logger.Debugf("Found lease for IP: %s", currentClient.IP)
 			}
 			continue
 		}
@@ -250,11 +260,14 @@ func parseLeasesFile() ([]ClientInfo, error) {
 		}
 	}
 
-	// Add the last client if exists
+	// Handle the last lease block if exists
 	if currentClient != nil {
+		log.Logger.Debugf("Adding final client: IP=%s, MAC=%s, Active=%v",
+			currentClient.IP, currentClient.MAC, currentClient.Active)
 		clients = append(clients, *currentClient)
 	}
 
+	log.Logger.Debugf("Total clients found: %d", len(clients))
 	return clients, nil
 }
 

@@ -3,14 +3,11 @@ package config
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spidernet-io/bmc/pkg/log"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -20,23 +17,12 @@ import (
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/apis/bmc/v1beta1"
 )
 
-// TLS file names
-const (
-	TLSCertFile = "tls.crt"
-	TLSKeyFile  = "tls.key"
-	CAFile      = "ca.crt"
-)
-
-// Default paths
-const (
-	DefaultTLSPath = "/var/run/bmc/tls" // Default path for storing TLS certificates
-)
-
 // AgentConfig represents the agent configuration
 type AgentConfig struct {
 	ClusterAgentName string
 	AgentObjSpec     bmcv1beta1.ClusterAgentSpec
-	TLSPath          string
+	Username         string
+	Password         string
 }
 
 // ValidateEndpointConfig validates the endpoint configuration
@@ -45,16 +31,13 @@ func (c *AgentConfig) ValidateEndpointConfig(clientset *kubernetes.Clientset) er
 		return fmt.Errorf("endpoint configuration is required")
 	}
 
-	if c.AgentObjSpec.Endpoint.HTTPS {
-		if c.AgentObjSpec.Endpoint.SecretName == "" || c.AgentObjSpec.Endpoint.SecretNamespace == "" {
-			return fmt.Errorf("when HTTPS is enabled, both secretName and secretNamespace must be specified")
-		}
+	// Check if port is valid
+	if c.AgentObjSpec.Endpoint.Port <= 0 || c.AgentObjSpec.Endpoint.Port > 65535 {
+		return fmt.Errorf("invalid port number: %d", c.AgentObjSpec.Endpoint.Port)
+	}
 
-		// Create TLS directory if it doesn't exist
-		if err := os.MkdirAll(DefaultTLSPath, 0700); err != nil {
-			return fmt.Errorf("failed to create TLS directory: %v", err)
-		}
-
+	// Get credentials from secret if specified
+	if c.AgentObjSpec.Endpoint.SecretName != "" && c.AgentObjSpec.Endpoint.SecretNamespace != "" {
 		// Get the secret
 		secret, err := clientset.CoreV1().Secrets(c.AgentObjSpec.Endpoint.SecretNamespace).Get(
 			context.TODO(),
@@ -62,50 +45,26 @@ func (c *AgentConfig) ValidateEndpointConfig(clientset *kubernetes.Clientset) er
 			metav1.GetOptions{},
 		)
 		if err != nil {
-			return fmt.Errorf("failed to get TLS secret: %v", err)
+			return fmt.Errorf("failed to get credentials secret: %v", err)
 		}
 
-		// Store TLS files
-		if err := c.storeTLSFiles(secret); err != nil {
-			return fmt.Errorf("failed to store TLS files: %v", err)
-		}
-		c.TLSPath = DefaultTLSPath
-	} else {
-		c.TLSPath = ""
-	}
-
-	// Check if port is valid
-	if c.AgentObjSpec.Endpoint.Port <= 0 || c.AgentObjSpec.Endpoint.Port > 65535 {
-		return fmt.Errorf("invalid port number: %d", c.AgentObjSpec.Endpoint.Port)
-	}
-
-	return nil
-}
-
-// storeTLSFiles stores TLS files from the secret to the local directory
-func (c *AgentConfig) storeTLSFiles(secret *corev1.Secret) error {
-	// Map of secret keys to file names
-	files := map[string]string{
-		"tls.crt": TLSCertFile,
-		"tls.key": TLSKeyFile,
-		"ca.crt":  CAFile,
-	}
-
-	for secretKey, fileName := range files {
-		data, ok := secret.Data[secretKey]
+		// Extract username and password
+		username, ok := secret.Data["username"]
 		if !ok {
-			if secretKey == "ca.crt" {
-				// CA is optional
-				continue
-			}
-			return fmt.Errorf("required key %s not found in secret", secretKey)
+			return fmt.Errorf("username not found in secret")
+		}
+		password, ok := secret.Data["password"]
+		if !ok {
+			return fmt.Errorf("password not found in secret")
 		}
 
-		filePath := filepath.Join(DefaultTLSPath, fileName)
-		if err := ioutil.WriteFile(filePath, data, 0600); err != nil {
-			return fmt.Errorf("failed to write %s: %v", fileName, err)
-		}
-		log.Logger.Infof("Stored %s to %s", fileName, filePath)
+		// Store credentials in config
+		c.Username = string(username)
+		c.Password = string(password)
+
+		log.Logger.Debugf("Successfully loaded credentials from secret %s/%s",
+			c.AgentObjSpec.Endpoint.SecretNamespace,
+			c.AgentObjSpec.Endpoint.SecretName)
 	}
 
 	return nil
@@ -143,7 +102,6 @@ func (c *AgentConfig) GetDetailString() string {
 	var details strings.Builder
 
 	details.WriteString(fmt.Sprintf("ClusterAgentName: %s\n", c.ClusterAgentName))
-	details.WriteString(fmt.Sprintf("TLSPath: %s\n", c.TLSPath))
 	details.WriteString("AgentSpec:\n")
 
 	// AgentYaml details
