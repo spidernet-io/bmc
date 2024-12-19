@@ -2,11 +2,13 @@
 package dhcpserver
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/spidernet-io/bmc/pkg/log"
@@ -73,24 +75,61 @@ func configureInterface(interfaceName, selfIP string) error {
 //
 // Returns an error if configuration file cannot be created or written.
 func (s *dhcpServer) generateConfig() error {
+	// Get network and mask from subnet
 	network, netmask, err := getNetworkAndMask(s.config.Subnet)
 	if err != nil {
 		return fmt.Errorf("failed to get network and mask: %v", err)
 	}
 
+	// Read template file
+	tmplContent, err := os.ReadFile(DhcpConfigTemplatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read DHCP config template: %v", err)
+	}
+
+	// Parse template
+	tmpl, err := template.New("dhcp-config").Parse(string(tmplContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse DHCP config template: %v", err)
+	}
+
 	// Convert IP range format from "start-end" to "start end"
 	ipRange := strings.Replace(s.config.IpRange, "-", " ", 1)
-	config := fmt.Sprintf(DhcpConfigTemplate,
-		network,          // subnet
-		netmask,          // netmask in subnet declaration
-		ipRange,          // range
-		s.config.Gateway, // routers
-		netmask,          // subnet-mask option
-	)
 
-	log.Logger.Debugf("Generated DHCP configuration:\n\n%s", config)
+	// Prepare template data
+	data := struct {
+		Subnet     string
+		Netmask    string
+		Range      string
+		Router     string
+		SubnetMask string
+	}{
+		Subnet:     network,
+		Netmask:    netmask,
+		Range:      ipRange,
+		Router:     s.config.Gateway,
+		SubnetMask: netmask,
+	}
 
-	return os.WriteFile(DhcpConfigPath, []byte(config), 0644)
+	// Create config file
+	f, err := os.Create(DhcpConfigPath)
+	if err != nil {
+		return fmt.Errorf("failed to create config file: %v", err)
+	}
+	defer f.Close()
+
+	// Execute template
+	if err := tmpl.Execute(f, data); err != nil {
+		return fmt.Errorf("failed to execute template: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute template: %v", err)
+	}
+	log.Logger.Infof("generated DHCP config file at %s:\n%s", DhcpConfigPath, buf.String())
+
+	return nil
 }
 
 // calculateTotalIPs computes the total number of IP addresses available for allocation

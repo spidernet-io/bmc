@@ -72,6 +72,17 @@ data:
               timeoutSeconds: 5
               successThreshold: 1
               failureThreshold: 3
+            volumeMounts:
+            - name: dhcp-config
+              mountPath: /etc/dhcp/templates
+              readOnly: true
+          volumes:
+          - name: dhcp-config
+            configMap:
+              name: {{ .Release.Name }}-dhcp-config
+              items:
+              - key: dhcp-config.tmpl
+                path: dhcp-config.tmpl
   agent-serviceaccount.yaml: |
     apiVersion: v1
     kind: ServiceAccount

@@ -17,25 +17,8 @@ const (
 	// The package expects this binary to be available in the system PATH.
 	DhcpBinary = "dhcpd"
 
-	// DhcpConfigTemplate is the template for generating the DHCP server configuration.
-	// It defines the basic subnet configuration with:
-	// - Network address and netmask
-	// - IP range for dynamic allocation
-	// - Default gateway
-	// - Subnet mask option
-	//
-	// The template is used by the generateConfig method to generate the DHCP
-	// server configuration file.
-	// default-lease-time 2592000= 30 days
-	// max-lease-time 2592000= 30 days
-	DhcpConfigTemplate = `
-default-lease-time 2592000;
-max-lease-time 2592000;
-subnet %s netmask %s {
-    range %s;
-    option routers %s;
-    option subnet-mask %s;
-}`
+	// DhcpConfigTemplatePath is the path to the DHCP server configuration template file.
+	DhcpConfigTemplatePath = "/etc/dhcp/templates/dhcp-config.tmpl"
 
 	// MonitorInterval is the interval in seconds for monitoring the DHCP server.
 	// The monitor routine checks server health and updates statistics at this interval.
