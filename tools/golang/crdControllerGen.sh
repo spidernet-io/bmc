@@ -12,7 +12,7 @@ set -o pipefail
 
 PROJECT_ROOT=$(dirname ${BASH_SOURCE[0]})/../..
 
-CHART_DIR=${1:-"${PROJECT_ROOT}/charts"}
+CHART_DIR=${1:-"${PROJECT_ROOT}/chart"}
 API_CODE_DIR=${2:-"${PROJECT_ROOT}/pkg/k8s/apis/bmc.spidernet.io/v1beta1"}
 
 #======================
@@ -29,8 +29,8 @@ controllerGenCmd() {
 #     | sed 's?name: exampleClusterRole?name: {{ include "project.name" . }}?' > ${CHART_DIR}/templates/role.yaml
 
 # echo "generate CRD yaml to chart"
-# rm -rf ${CHART_DIR}/crds/*
-# controllerGenCmd crd paths="${API_CODE_DIR}"  output:dir="${CHART_DIR}/crds"
+rm -rf ${CHART_DIR}/crds/*
+controllerGenCmd crd paths="${API_CODE_DIR}"  output:dir="${CHART_DIR}/crds"
 
 echo "generate deepcode to api code"
 controllerGenCmd  object paths="${API_CODE_DIR}"
