@@ -9,12 +9,21 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
+
 	"time"
 
+	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/log"
 )
+
+// DhcpServer defines the interface for DHCP server operations
+type DhcpServer interface {
+	Start() error
+	Stop() error
+	GetClientInfo() ([]types.ClientInfo, error)
+	GetIPUsageStats() (*types.IPUsageStats, error)
+}
 
 // dhcpServer implements the DhcpServer interface.
 // It manages the lifecycle of an ISC DHCP server instance and provides
@@ -29,27 +38,34 @@ type dhcpServer struct {
 	// stopChan signals the monitoring routine to stop
 	stopChan chan struct{}
 	// stats holds current IP usage statistics
-	stats IPUsageStats
+	stats types.IPUsageStats
 	// totalIPs is the total number of IP addresses available for allocation
 	totalIPs int
 	// ipRangeErr stores any error encountered while parsing IP range
 	ipRangeErr error
 	// previousClients stores the last known state of DHCP clients
-	previousClients []ClientInfo
+	previousClients []types.ClientInfo
 	// clusterAgentName is used to generate unique lease file path
 	clusterAgentName string
 	// leaseFilePath is the rendered lease file path
 	leaseFilePath string
+	// Event channels for hoststatus
+	addChan    chan<- types.ClientInfo
+	deleteChan chan<- types.ClientInfo
 }
+
+var _ DhcpServer = (*dhcpServer)(nil)
 
 // NewDhcpServer creates a new DHCP server instance.
 // Parameters:
 //   - config: DHCP server configuration including interface, subnet, and IP range
 //   - clusterAgentName: name used to generate unique lease file path
+//   - addChan: channel for notifying about new or modified DHCP clients
+//   - deleteChan: channel for notifying about removed DHCP clients
 //
 // Returns:
 //   - DhcpServer interface implementation
-func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig, clusterAgentName string) (*dhcpServer, error) {
+func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig, clusterAgentName string, addChan chan<- types.ClientInfo, deleteChan chan<- types.ClientInfo) (*dhcpServer, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config cannot be nil")
 	}
@@ -130,6 +146,8 @@ func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig, clusterAgentName string)
 		clusterAgentName: clusterAgentName,
 		stopChan:         make(chan struct{}),
 		leaseFilePath:    fmt.Sprintf(DhcpLeaseFileFormat, clusterAgentName),
+		addChan:          addChan,
+		deleteChan:       deleteChan,
 	}
 
 	return server, nil
@@ -248,11 +266,6 @@ func (s *dhcpServer) Start() error {
 	// Start monitoring routine
 	go s.monitor()
 
-	// Initialize IP usage stats
-	if err := s.updateStats(); err != nil {
-		log.Logger.Warnf("Failed to initialize IP usage stats: %v", err)
-	}
-
 	return nil
 }
 
@@ -267,150 +280,36 @@ func (s *dhcpServer) Stop() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	log.Logger.Debugf("Stopping DHCP server on interface %s", s.config.DhcpServerInterface)
+	log.Logger.Debugf("Stopping DHCP server...")
 
-	if s.cmd != nil && s.cmd.Process != nil {
-		log.Logger.Debug("stopping DHCP server process")
-		close(s.stopChan)
-		if err := s.cmd.Process.Kill(); err != nil {
-			log.Logger.Errorf("failed to stop DHCP server: %v", err)
-			return err
-		}
-		s.cmd.Wait()
-		s.cmd = nil
-		log.Logger.Info("DHCP server stopped successfully")
+	if s.cmd == nil || s.cmd.Process == nil {
+		log.Logger.Debug("DHCP server is not running")
+		return nil
 	}
+
+	// Signal monitor to stop
+	close(s.stopChan)
+
+	log.Logger.Debugf("Terminating DHCP server process (PID: %d)", s.cmd.Process.Pid)
+	if err := s.cmd.Process.Kill(); err != nil {
+		log.Logger.Errorf("failed to stop DHCP server: %v", err)
+		return err
+	}
+	s.cmd.Wait()
+	s.cmd = nil
+	log.Logger.Info("DHCP server stopped successfully")
 
 	return nil
 }
 
 // GetClientInfo returns information about DHCP clients
-func (s *dhcpServer) GetClientInfo() ([]ClientInfo, error) {
-	return GetDhcpClients(s.leaseFilePath)
-}
-
-// GetIPUsageStats calculates current IP allocation statistics.
-// It counts the number of active leases and compares with total
-// available IPs to determine usage statistics.
-//
-// Returns:
-//   - *IPUsageStats: current IP usage statistics
-//   - error: if statistics cannot be calculated
-func (s *dhcpServer) GetIPUsageStats() (*IPUsageStats, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	log.Logger.Debugf("Retrieving IP usage statistics")
-	if err := s.updateStats(); err != nil {
+func (s *dhcpServer) GetClientInfo() ([]types.ClientInfo, error) {
+	log.Logger.Debugf("Retrieving DHCP client information from lease file: %s", s.leaseFilePath)
+	clients, err := GetDhcpClients(s.leaseFilePath)
+	if err != nil {
+		log.Logger.Debugf("Failed to get DHCP clients: %v", err)
 		return nil, err
 	}
-	return &s.stats, nil
-}
-
-// monitor periodically checks server health and updates statistics.
-// This routine runs in a separate goroutine and continues until
-// signaled to stop via stopChan.
-func (s *dhcpServer) monitor() {
-	ticker := time.NewTicker(MonitorInterval * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-s.stopChan:
-			log.Logger.Debugf("DHCP server monitor stopped")
-			return
-		case <-ticker.C:
-			// Check if process exists and is running
-			needRestart := s.cmd == nil || s.cmd.Process == nil
-			if !needRestart {
-				// Process exists, check if it's still running
-				if err := s.cmd.Process.Signal(syscall.Signal(0)); err != nil {
-					needRestart = true
-				}
-			}
-
-			if needRestart {
-				log.Logger.Warnf("DHCP server process not running, restarting...")
-
-				// Print last 50 lines of log file before restart
-				if err := s.printDhcpLogTail(); err != nil {
-					log.Logger.Errorf("Failed to print DHCP log tail: %v", err)
-				}
-
-				if err := s.Start(); err != nil {
-					log.Logger.Errorf("Failed to restart DHCP server: %v", err)
-				}
-			}
-		}
-	}
-}
-
-// updateStats calculates current IP allocation statistics.
-// It counts the number of active leases and compares with total
-// available IPs to determine usage statistics.
-//
-// Returns an error if statistics cannot be calculated.
-func (s *dhcpServer) updateStats() error {
-	// If there was an error parsing IP range, return it
-	if s.ipRangeErr != nil {
-		return s.ipRangeErr
-	}
-
-	// Get current client info
-	currentClients, err := GetDhcpClients(s.leaseFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to get current client info: %v", err)
-	}
-
-	log.Logger.Debugf("Current DHCP clients count: %d", len(currentClients))
-	for _, client := range currentClients {
-		log.Logger.Debugf("Active client - IP: %s, MAC: %s, Active: %v", client.IP, client.MAC, client.Active)
-	}
-
-	// Create maps for easy lookup
-	currentMap := make(map[string]ClientInfo)
-	previousMap := make(map[string]ClientInfo)
-
-	for _, client := range currentClients {
-		currentMap[client.IP] = client
-	}
-	for _, client := range s.previousClients {
-		previousMap[client.IP] = client
-	}
-
-	// Check for IP and MAC changes
-	for ip, client := range currentMap {
-		prevClient, exists := previousMap[ip]
-		if !exists {
-			// New IP allocation
-			log.Logger.Infof("New IP allocated - IP: %s, MAC: %s", ip, client.MAC)
-		} else if prevClient.MAC != client.MAC {
-			// Same IP but different MAC (reassignment)
-			log.Logger.Infof("IP reassigned - IP: %s, Old MAC: %s, New MAC: %s",
-				ip, prevClient.MAC, client.MAC)
-		}
-	}
-
-	for ip, client := range previousMap {
-		if _, exists := currentMap[ip]; !exists {
-			// IP released
-			log.Logger.Infof("IP released - IP: %s, MAC: %s", ip, client.MAC)
-		}
-	}
-
-	// Calculate and update stats
-	newStats := IPUsageStats{
-		TotalIPs:     s.totalIPs,
-		AvailableIPs: s.totalIPs - len(currentClients),
-	}
-
-	if newStats.AvailableIPs != s.stats.AvailableIPs {
-		log.Logger.Debugf("IP usage stats updated - Total: %d, Available: %d",
-			newStats.TotalIPs, newStats.AvailableIPs)
-	}
-
-	// Update previous clients and stats
-	s.previousClients = currentClients
-	s.stats = newStats
-	return nil
+	log.Logger.Debugf("Found %d DHCP clients", len(clients))
+	return clients, nil
 }

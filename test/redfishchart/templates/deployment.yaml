@@ -47,12 +47,15 @@ spec:
         - -c
         - |-
           # Update package list and install required packages
+          set -o errexit
+          set -o pipefail
+          set -o nounset
           echo "flush ip on {{ .Values.networkInterface }}"
           ip a 
-          ip addr flush dev {{ .Values.networkInterface }}
+          ip addr flush dev {{ .Values.networkInterface }} || true
           (
-              ipAddr={{ .Values.staticIp }}/{{ .Values.staticMask }}
-              if [ -n "${ipAddr}" ] ; then
+              ipAddr="{{ .Values.staticIp }}/{{ .Values.staticMask }}"
+              if [ -n "{{ .Values.staticIp }}" ] ; then
                 echo "set ip on {{ .Values.networkInterface }} to ${ipAddr}"
                 ip a a ${ipAddr} dev {{ .Values.networkInterface }}
                 touch /tmp/ready

@@ -142,8 +142,8 @@ data:
       resources: ["deployments"]
       verbs: ["get", "list", "watch"]
     - apiGroups: ["bmc.spidernet.io"]
-      resources: ["clusteragents"]
-      verbs: ["get", "list", "watch"]
+      resources: ["clusteragents", "hoststatuses", "hostendpoints", "hoststatuses/status", "hostendpoints/status"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   agent-rolebinding.yaml: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding

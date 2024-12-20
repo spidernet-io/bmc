@@ -312,7 +312,7 @@ spec:
                         type: string
                       selfIp:
                         description: SelfIp specifies the self IP for DHCP server
-                        pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}$
+                        pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$
                         type: string
                       subnet:
                         description: Subnet specifies the subnet for DHCP server

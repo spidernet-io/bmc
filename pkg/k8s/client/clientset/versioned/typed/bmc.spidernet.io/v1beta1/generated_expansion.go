@@ -8,3 +8,5 @@ package v1beta1
 type ClusterAgentExpansion interface{}
 
 type HostEndpointExpansion interface{}
+
+type HostStatusExpansion interface{}

@@ -23,6 +23,10 @@ func (c *FakeBmcV1beta1) HostEndpoints() v1beta1.HostEndpointInterface {
 	return newFakeHostEndpoints(c)
 }
 
+func (c *FakeBmcV1beta1) HostStatuses() v1beta1.HostStatusInterface {
+	return newFakeHostStatuses(c)
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeBmcV1beta1) RESTClient() rest.Interface {

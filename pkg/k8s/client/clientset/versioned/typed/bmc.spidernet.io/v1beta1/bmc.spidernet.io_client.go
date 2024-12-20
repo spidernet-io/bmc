@@ -17,6 +17,7 @@ type BmcV1beta1Interface interface {
 	RESTClient() rest.Interface
 	ClusterAgentsGetter
 	HostEndpointsGetter
+	HostStatusesGetter
 }
 
 // BmcV1beta1Client is used to interact with features provided by the bmc.spidernet.io group.
@@ -30,6 +31,10 @@ func (c *BmcV1beta1Client) ClusterAgents() ClusterAgentInterface {
 
 func (c *BmcV1beta1Client) HostEndpoints() HostEndpointInterface {
 	return newHostEndpoints(c)
+}
+
+func (c *BmcV1beta1Client) HostStatuses() HostStatusInterface {
+	return newHostStatuses(c)
 }
 
 // NewForConfig creates a new BmcV1beta1Client for the given config.

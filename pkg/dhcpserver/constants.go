@@ -22,7 +22,7 @@ const (
 
 	// MonitorInterval is the interval in seconds for monitoring the DHCP server.
 	// The monitor routine checks server health and updates statistics at this interval.
-	MonitorInterval = 30 // seconds
+	MonitorInterval = 2 // seconds
 
 	// EnvDhcpDebugLog is the environment variable name that controls whether dhcpd's
 	// output should be logged to stdout/stderr. When set to "true", all dhcpd output

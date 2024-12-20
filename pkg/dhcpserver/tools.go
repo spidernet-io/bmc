@@ -4,15 +4,15 @@ package dhcpserver
 import (
 	"bytes"
 	"fmt"
+	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
+	"github.com/spidernet-io/bmc/pkg/log"
+	"github.com/vishvananda/netlink"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/spidernet-io/bmc/pkg/log"
-	"github.com/vishvananda/netlink"
 )
 
 // configureInterface configures the network interface with the specified IP address
@@ -210,7 +210,7 @@ func getNetworkAndMask(cidr string) (string, string, error) {
 
 // GetDhcpClients parses the DHCP lease file and returns information about active DHCP clients.
 // If the lease file doesn't exist or is empty, returns an empty slice.
-func GetDhcpClients(leaseFilePath string) ([]ClientInfo, error) {
+func GetDhcpClients(leaseFilePath string) ([]types.ClientInfo, error) {
 	content, err := os.ReadFile(leaseFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -221,9 +221,9 @@ func GetDhcpClients(leaseFilePath string) ([]ClientInfo, error) {
 
 	log.Logger.Debugf("Parsing DHCP lease file content:\n%s", string(content))
 
-	var clients []ClientInfo
+	var clients []types.ClientInfo
 	lines := strings.Split(string(content), "\n")
-	var currentClient *ClientInfo
+	var currentClient *types.ClientInfo
 	var inLeaseBlock bool
 
 	for _, line := range lines {
@@ -241,7 +241,7 @@ func GetDhcpClients(leaseFilePath string) ([]ClientInfo, error) {
 					currentClient.IP, currentClient.MAC, currentClient.Active)
 				clients = append(clients, *currentClient)
 			}
-			currentClient = &ClientInfo{}
+			currentClient = &types.ClientInfo{}
 			inLeaseBlock = true
 
 			// Extract IP address

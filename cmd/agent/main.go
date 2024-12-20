@@ -10,8 +10,10 @@ import (
 	"time"
 
 	"github.com/spidernet-io/bmc/pkg/agent/config"
+	"github.com/spidernet-io/bmc/pkg/agent/hoststatus"
 	"github.com/spidernet-io/bmc/pkg/agent/server"
 	"github.com/spidernet-io/bmc/pkg/dhcpserver"
+	crdclientset "github.com/spidernet-io/bmc/pkg/k8s/client/clientset/versioned/typed/bmc.spidernet.io/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -29,8 +31,8 @@ func main() {
 
 	log.Logger.Info("Starting BMC agent")
 
-	// Initialize Kubernetes client
-	k8sClient, err := initClients()
+	// Initialize Kubernetes clients
+	k8sClient, runtimeClient, err := initClients()
 	if err != nil {
 		log.Logger.Errorf("Failed to initialize clients: %v", err)
 		os.Exit(1)
@@ -56,16 +58,35 @@ func main() {
 		}
 	}()
 
+	// Initialize hoststatus controller
+	hostStatusCtrl := hoststatus.NewHostStatusController(runtimeClient, agentConfig)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := hostStatusCtrl.Run(ctx); err != nil {
+		log.Logger.Errorf("Failed to start hoststatus controller: %v", err)
+		os.Exit(1)
+	}
+
+	// Get DHCP event channels for hoststatus
+	addChan, deleteChan := hostStatusCtrl.GetDHCPEventChan()
+
 	// Initialize DHCP server if enabled
 	var dhcpSrv dhcpserver.DhcpServer
 	if agentConfig.AgentObjSpec.Feature.EnableDhcpServer {
 		log.Logger.Info("Starting DHCP server...")
 		var err error
-		dhcpSrv, err = dhcpserver.NewDhcpServer(agentConfig.AgentObjSpec.Feature.DhcpServerConfig, agentConfig.ClusterAgentName)
+		dhcpSrv, err = dhcpserver.NewDhcpServer(
+			agentConfig.AgentObjSpec.Feature.DhcpServerConfig, 
+			agentConfig.ClusterAgentName,
+			addChan,
+			deleteChan,
+		)
 		if err != nil {
 			log.Logger.Errorf("Failed to initialize DHCP server: %v", err)
 			os.Exit(1)
 		}
+
 		if err := dhcpSrv.Start(); err != nil {
 			log.Logger.Errorf("Failed to start DHCP server: %v", err)
 			os.Exit(1)
@@ -87,7 +108,7 @@ func main() {
 			log.Logger.Debug("Agent still running...")
 		case sig := <-sigChan:
 			log.Logger.Infof("Received signal %v, shutting down...", sig)
-			
+
 			// Stop DHCP server if it was started
 			if dhcpSrv != nil {
 				log.Logger.Info("Stopping DHCP server...")
@@ -96,36 +117,42 @@ func main() {
 				}
 			}
 
+			// Stop hoststatus controller
+			hostStatusCtrl.Stop()
+
 			// Graceful shutdown of HTTP server
 			if err := srv.Shutdown(context.Background()); err != nil {
 				log.Logger.Errorf("Error shutting down HTTP server: %v", err)
 			}
+
 			return
 		}
 	}
 }
 
-// initClients initializes Kubernetes client
-func initClients() (*kubernetes.Clientset, error) {
-	// Get kubernetes config
-	kubeconfig := os.Getenv("KUBECONFIG")
+// initClients initializes Kubernetes clients
+func initClients() (*kubernetes.Clientset, *crdclientset.BmcV1beta1Client, error) {
 	var config *rest.Config
 	var err error
 
-	if kubeconfig != "" {
+	if kubeconfig := os.Getenv("KUBECONFIG"); kubeconfig != "" {
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 	} else {
 		config, err = rest.InClusterConfig()
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Create kubernetes client
-	k8sClient, err := kubernetes.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return k8sClient, nil
+	runtimeClient, err := crdclientset.NewForConfig(config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return clientset, runtimeClient, nil
 }

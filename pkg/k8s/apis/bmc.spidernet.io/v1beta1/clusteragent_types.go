@@ -5,6 +5,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	HostTypeDHCP     = "dhcp"
+	HostTypeEndpoint = "hostEndpoint"
+)
+
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -111,7 +116,7 @@ type DhcpServerConfig struct {
 
 	// SelfIp specifies the self IP for DHCP server
 	// +optional
-	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$`
 	SelfIp string `json:"selfIp,omitempty"`
 }
 

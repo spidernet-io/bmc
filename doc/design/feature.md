@@ -25,3 +25,5 @@
     * pxe 引导
         带内子网上， 需要手动部署一个 PXE 服务（ 包括 dhcp server 和 sftp server）
 
+- 支持通过 SNMP 获取告警
+

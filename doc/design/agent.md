@@ -94,7 +94,7 @@ root@bmc-e2e-worker:/# cat /var/lib/dhcp/bmc-clusteragent-dhcpd.leases
 
 ## hoststatus 管理模块
 
-新建定义一个 crd hoststatus
+新建定义一个 cluster 级别的 crd hoststatus
 
 ```
 apiVersion: bmc.spidernet.io/v1beta1
@@ -120,13 +120,19 @@ status:
     port: 80    // 必须有值
     mac: "00:0c:29:2f:3a:2a"  //可有值，可为空
   info:  // 必须有值
-    os: "ubuntu"  //可有值，可为空
+    os: "ubuntu"/""  //可有值，可为空
+    power: "on"/"off"/"unknown"   //可有值，可为空
+    snmpServer: "1.2.3.4"   //可有值，可为空
+    snmpPort: 161   //可有值，可为空
+  other: // 可有值，可为空, 它通过 additionalProperties 定义， 使得 其下层级的 成员 支持 多变的 key-value 对象， 实现 map[string]string 效果
+    xxx: xxx
+    xxx: xxx
 ```
 
-请在 @crd.yaml 中生成该 crd
-请在 @templates/agent-templates.yaml 中的 agent role 中赋予 hoststatus 的权限
 
-期间，在 @pkg/k8s/apis 中创建 crd 定义后， 可使用 make update_crd_sdk  来生成 配套的 client sdk，位于 pkg/k8s/client 下 ， 相关的 deep copy 函数，也会生成在 @pkg/k8s/apis
+请在 @pkg/k8s/apis/bmc.spidernet.io/v1beta1 中创建 crd 定义后， 可使用 make update_crd_sdk  来生成 配套的 client sdk，位于 @pkg/k8s/client 下 ， 相关的 deep copy 函数，也会生成在 @pkg/k8s/apis ， 相关的 crd 定义 生成在 @chart/crds 下
+
+请在 @templates/agent-templates.yaml 中的 agent role 中赋予 hoststatus 的权限
 
 @pkg/agent/hoststatus 目录下 创建一个 hoststatus 维护模块，它 通过 interface{} 对外暴露使用，它应该有如下接口
 

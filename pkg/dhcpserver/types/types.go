@@ -1,5 +1,5 @@
-// Package dhcpserver provides DHCP server management functionality.
-package dhcpserver
+// Package types defines the common types used by the DHCP server
+package types
 
 // ClientInfo represents information about a DHCP client lease
 type ClientInfo struct {
@@ -17,10 +17,30 @@ type ClientInfo struct {
 
 // IPUsageStats represents statistics about IP address allocation
 type IPUsageStats struct {
-	// TotalIPs is the total number of IP addresses available for allocation
-	TotalIPs int
+	// UsedIPs is the number of IP addresses currently in use
+	UsedIPs int
 	// AvailableIPs is the number of IP addresses currently available
 	AvailableIPs int
+	// UsagePercentage is the percentage of IP addresses currently in use
+	UsagePercentage float64
+}
+
+// DhcpServerConfig represents the configuration for the DHCP server
+type DhcpServerConfig struct {
+	// Interface is the network interface to listen on
+	Interface string
+	// SelfIP is the IP address to assign to the interface
+	SelfIP string
+	// StartIP is the start of the IP range
+	StartIP string
+	// EndIP is the end of the IP range
+	EndIP string
+	// Netmask is the subnet mask
+	Netmask string
+	// Gateway is the default gateway
+	Gateway string
+	// LeaseTime is the lease duration in seconds
+	LeaseTime int64
 }
 
 // DhcpServer defines the interface for DHCP server operations.

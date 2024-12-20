@@ -35,6 +35,8 @@ rules:
   - clusteragents/status
   - hostendpoints
   - hostendpoints/status
+  - hoststatuses
+  - hoststatuses/status
   verbs:
   - "*"
 - apiGroups:
