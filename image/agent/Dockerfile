@@ -20,6 +20,7 @@ RUN apt-get update && \
     isc-dhcp-server \
     iproute2 \
     isc-dhcp-client \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /

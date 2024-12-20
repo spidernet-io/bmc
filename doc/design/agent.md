@@ -183,4 +183,9 @@ status:
 
 请不要修改和本问题无关的其他代码
 
+## dhcp 的 僵死 ip
+
+dhcp 不支持 主动探活 client ip  
+对于 hoststatus 中的 HEALTHREADY = false， 因此 需要手动 确认 
+然后 进入 agent pod 中， 删除  /var/lib/dhcp/bmc-clusteragent-dhcpd.leases 文件中的 无效 ip 即可 
 

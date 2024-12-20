@@ -149,6 +149,18 @@ func (w *HostEndpointWebhook) validateHostEndpoint(ctx context.Context, hostEndp
 		}
 	}
 
+	// Check IP address conflict with existing HostStatus
+	hostStatusList := &bmcv1beta1.HostStatusList{}
+	if err := w.Client.List(ctx, hostStatusList); err != nil {
+		return fmt.Errorf("failed to list HostStatus: %v", err)
+	}
+
+	for _, hostStatus := range hostStatusList.Items {
+		if hostStatus.Status.Basic.IpAddr == hostEndpoint.Spec.IPAddr {
+			return fmt.Errorf("IP address %s is already used by HostStatus %s", hostEndpoint.Spec.IPAddr, hostStatus.Name)
+		}
+	}
+
 	// Validate secret if both secretName and secretNamespace are provided
 	if hostEndpoint.Spec.SecretName != "" && hostEndpoint.Spec.SecretNamespace != "" {
 		secret := &corev1.Secret{}

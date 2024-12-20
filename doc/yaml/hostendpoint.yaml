@@ -1,0 +1,15 @@
+apiVersion: bmc.spidernet.io/v1beta1
+kind: HostEndpoint
+metadata:
+  name: example-host-endpoint
+spec:
+  # The IP address of the host endpoint (required)
+  ipAddr: "192.168.0.101"
+  # The cluster agent this host endpoint belongs to (optional)
+  clusterAgent: "bmc-clusteragent"
+  # Credentials for accessing the host endpoint (optional)
+  secretName: ""
+  secretNamespace: ""
+  # Communication settings (optional)
+  https: true  # Defaults to true if not specified
+  port: 443    # Defaults to 80 if not specified
