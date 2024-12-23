@@ -14,6 +14,7 @@ import (
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	crdclientset "github.com/spidernet-io/bmc/pkg/k8s/client/clientset/versioned/typed/bmc.spidernet.io/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/log"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -188,14 +189,17 @@ func (c *hostStatusController) processNextWorkItem() bool {
 		return false
 	}
 	defer c.workqueue.Done(obj)
-
 	var err error
+	var objName = "unknown"
+
 	switch item := obj.(type) {
 	case *bmcv1beta1.HostEndpoint:
 		log.Logger.Debugf("Processing HostEndpoint from workqueue: %s", item.Name)
+		objName = item.Name
 		err = c.processHostEndpoint(item)
 	case *bmcv1beta1.HostStatus:
 		log.Logger.Debugf("Processing HostStatus from workqueue: %s", item.Name)
+		objName = item.Name
 		err = c.processHostStatus(item)
 	default:
 		log.Logger.Errorf("Unexpected type in workqueue: %s", reflect.TypeOf(obj))
@@ -209,7 +213,7 @@ func (c *hostStatusController) processNextWorkItem() bool {
 	}
 
 	if shouldRetry(err) && c.workqueue.NumRequeues(obj) < maxRetries {
-		log.Logger.Debugf("Error processing HostEndpoint %s (will retry): %v", hostEndpoint.Name, err)
+		log.Logger.Debugf("Error processing object %s (will retry): %v", objName, err)
 		c.workqueue.AddRateLimited(obj)
 		return true
 	}
