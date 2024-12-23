@@ -157,6 +157,10 @@ func (c *hostStatusController) Run(ctx context.Context) error {
 		}
 	}()
 
+	go func(){
+		c.UpdateHostStatusAtInterval()	
+	}()
+
 	log.Logger.Debug("Both goroutines started")
 	log.Logger.Info("HostStatus controller started successfully")
 	return nil

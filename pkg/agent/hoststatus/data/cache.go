@@ -42,9 +42,26 @@ func (c *HostCache) Delete(name string) {
 }
 
 // Get 获取指定主机的数据
-func (c *HostCache) Get(name string) (HostConnectCon, bool) {
+func (c *HostCache) Get(name string) *HostConnectCon {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	data, exists := c.data[name]
-	return data, exists
+	if exists {
+		return &data
+	}
+	return nil
+}
+
+// GetAll 返回缓存中的所有主机数据
+func (c *HostCache) GetAll() map[string]HostConnectCon {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	// 创建一个新的 map 来存储所有数据的副本
+	result := make(map[string]HostConnectCon, len(c.data))
+	for k, v := range c.data {
+		result[k] = v
+	}
+
+	return result
 }

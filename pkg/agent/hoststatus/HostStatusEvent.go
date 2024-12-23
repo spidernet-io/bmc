@@ -61,6 +61,8 @@ func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStat
 		Username: username,
 		Password: password,
 	})
+	// update the crd
+	c.UpdateHostStatus(hostStatus.Name)
 
 	log.Logger.Debugf("Successfully processed HostStatus %s", hostStatus.Name)
 	return nil
