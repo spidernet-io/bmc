@@ -9,8 +9,8 @@ import (
 	"strings"
 	"text/template"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 
 	"github.com/spidernet-io/bmc/pkg/log"
@@ -18,17 +18,17 @@ import (
 
 // TemplateData contains the data needed to render the templates
 type TemplateData struct {
-	Name               string            `json:"name"`
-	Namespace          string            `json:"namespace"`
-	ClusterName        string            `json:"clusterName"`
-	Image              string            `json:"image"`
-	Replicas           int32             `json:"replicas"`
-	ServiceAccountName string            `json:"serviceAccountName"`
-	RoleName           string            `json:"roleName"`
-	UnderlayInterface  string            `json:"underlayInterface"`
-	NodeAffinity       *v1.NodeAffinity  `json:"nodeAffinity,omitempty"`
-	NodeName           string            `json:"nodeName"`
-	HostNetwork        bool              `json:"hostNetwork"`
+	Name               string           `json:"name"`
+	Namespace          string           `json:"namespace"`
+	ClusterName        string           `json:"clusterName"`
+	Image              string           `json:"image"`
+	Replicas           int32            `json:"replicas"`
+	ServiceAccountName string           `json:"serviceAccountName"`
+	RoleName           string           `json:"roleName"`
+	UnderlayInterface  string           `json:"underlayInterface"`
+	NodeAffinity       *v1.NodeAffinity `json:"nodeAffinity,omitempty"`
+	NodeName           string           `json:"nodeName"`
+	HostNetwork        bool             `json:"hostNetwork"`
 }
 
 // toYaml takes an interface, marshals it to yaml, and returns a string
@@ -39,6 +39,13 @@ func toYaml(v interface{}) string {
 		return ""
 	}
 	return string(data)
+}
+
+// ShouldHandlePVC 检查是否需要处理 PVC
+func ShouldHandlePVC() bool {
+	pvcPath := filepath.Join("/etc/bmc/templates", "agent-pvc.yaml")
+	_, err := os.Stat(pvcPath)
+	return err == nil
 }
 
 // RenderTemplate reads a template file and renders it with the given data
@@ -84,7 +91,7 @@ func RenderTemplate(templateName string, data *TemplateData) (*unstructured.Unst
 
 	result := &unstructured.Unstructured{Object: obj}
 
-	log.Logger.Infof("Template rendered successfully: %s (kind: %s, name: %s, namespace: %s)", 
+	log.Logger.Infof("Template rendered successfully: %s (kind: %s, name: %s, namespace: %s)",
 		templateName, result.GetKind(), result.GetName(), result.GetNamespace())
 
 	return result, nil
@@ -98,13 +105,12 @@ func RenderAllAgentResources(data *TemplateData) (map[string]*unstructured.Unstr
 	templates := []string{
 		"agent-deployment.yaml",
 		"agent-serviceaccount.yaml",
-		"agent-role.yaml",
-		"agent-rolebinding.yaml",
+		"agent-clusterrole.yaml",
+		"agent-clusterrolebinding.yaml",
 	}
 
 	// Check if agent-pvc.yaml exists and try to render it
-	pvcPath := filepath.Join("/etc/bmc/templates", "agent-pvc.yaml")
-	if _, err := os.Stat(pvcPath); err == nil {
+	if ShouldHandlePVC() {
 		if obj, err := RenderTemplate("agent-pvc.yaml", data); err == nil {
 			kind := strings.ToLower(obj.GetKind())
 			resources[kind] = obj
@@ -127,7 +133,7 @@ func RenderAllAgentResources(data *TemplateData) (map[string]*unstructured.Unstr
 		kind := strings.ToLower(obj.GetKind())
 		resources[kind] = obj
 
-		log.Logger.Debugf("Template rendered and added to resources: %s (kind: %s, name: %s, namespace: %s)", 
+		log.Logger.Debugf("Template rendered and added to resources: %s (kind: %s, name: %s, namespace: %s)",
 			tmpl, obj.GetKind(), obj.GetName(), obj.GetNamespace())
 	}
 

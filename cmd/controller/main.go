@@ -16,8 +16,9 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	controller "github.com/spidernet-io/bmc/pkg/controller/clusteragent"
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
+	versioned "github.com/spidernet-io/bmc/pkg/k8s/client/clientset/versioned"
 	"github.com/spidernet-io/bmc/pkg/log"
 	clusteragentwebhook "github.com/spidernet-io/bmc/pkg/webhook/clusteragent"
 	hostendpointwebhook "github.com/spidernet-io/bmc/pkg/webhook/hostendpoint"
@@ -54,6 +55,13 @@ func main() {
 
 	flag.Parse()
 
+	// 获取 POD_NAMESPACE
+	namespace := os.Getenv("POD_NAMESPACE")
+	if namespace == "" {
+		log.Logger.Error("POD_NAMESPACE environment variable not set")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -62,18 +70,27 @@ func main() {
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: webhookPort,
 		}),
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "bmc-controller-lock",
+		HealthProbeBindAddress:  probeAddr,
+		LeaderElection:          enableLeaderElection,
+		LeaderElectionID:        "bmc-controller-lock",
+		LeaderElectionNamespace: namespace,
 	})
 	if err != nil {
 		log.Logger.Errorf("unable to start manager: %v", err)
 		os.Exit(1)
 	}
 
+	// 初始化 bmc client
+	bmcClient, err := versioned.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		log.Logger.Errorf("unable to create bmc client: %v", err)
+		os.Exit(1)
+	}
+
 	if err = (&controller.ClusterAgentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		BmcClient: bmcClient,
 	}).SetupWithManager(mgr); err != nil {
 		log.Logger.Errorf("unable to create controller %s: %v", "ClusterAgent", err)
 		os.Exit(1)

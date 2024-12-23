@@ -14,7 +14,11 @@ spec:
     singular: clusteragent
   scope: Cluster
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .status.ready
+      name: ready
+      type: boolean
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: ClusterAgent is the Schema for the clusteragents API
@@ -351,3 +355,5 @@ spec:
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}
