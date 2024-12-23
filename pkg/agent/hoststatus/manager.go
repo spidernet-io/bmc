@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	maxRetries = 3 // 最大重试次数
+	maxRetries = 10 // 最大重试次数
 )
 
 type HostStatusController interface {
@@ -175,6 +175,11 @@ func formatHostStatusName(agentName, ip string) string {
 
 //----------------
 
+// shouldRetry determines if an error should trigger a retry
+func shouldRetry(err error) bool {
+	return errors.IsConflict(err) || errors.IsServerTimeout(err) || errors.IsTooManyRequests(err)
+}
+
 func (c *hostStatusController) processNextWorkItem() bool {
 	log.Logger.Debug("Trying to get next item from workqueue")
 	obj, shutdown := c.workqueue.Get()
@@ -203,9 +208,8 @@ func (c *hostStatusController) processNextWorkItem() bool {
 		return true
 	}
 
-	// 如果处理失败且重试次数未超过限制，重新入队
-	if c.workqueue.NumRequeues(obj) < maxRetries {
-		log.Logger.Warnf("Error processing object: %v, retrying", err)
+	if shouldRetry(err) && c.workqueue.NumRequeues(obj) < maxRetries {
+		log.Logger.Debugf("Error processing HostEndpoint %s (will retry): %v", hostEndpoint.Name, err)
 		c.workqueue.AddRateLimited(obj)
 		return true
 	}

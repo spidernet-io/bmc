@@ -51,10 +51,7 @@ func (c *hostStatusController) processDHCPEvents(ctx context.Context) {
 	}
 }
 
-// shouldRetry determines if an error should trigger a retry
-func shouldRetry(err error) bool {
-	return errors.IsConflict(err) || errors.IsServerTimeout(err) || errors.IsTooManyRequests(err)
-}
+
 
 func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error {
 
