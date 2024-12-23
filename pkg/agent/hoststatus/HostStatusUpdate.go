@@ -43,6 +43,7 @@ func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error 
 	// 检查健康状态
 	healthy := client.Health()
 	updated.Status.HealthReady = healthy
+	client.GetInfo()
 
 	// 更新 HostStatus
 	if !reflect.DeepEqual(updated.Status, existing.Status) {
