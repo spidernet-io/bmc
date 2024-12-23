@@ -9,21 +9,21 @@ spec:
   # IP 地址必须在 clusterAgent 的 DHCPServerConfig.subnet 范围内
   ipAddr: {{ .Values.staticIp }}
   # 可选：指定访问凭证，如果都设置了，secret 必须存在且包含 username 和 password
-  secretName: "test-secret"
-  secretNamespace: "bmc"
+  #secretName: "test-secret"
+  #secretNamespace: "bmc"
   # 可选：默认为 true
-  https: true
+  https: false
   # 可选：默认为 80
-  port: 443
----
-# 对应的 Secret 示例
-apiVersion: v1
-kind: Secret
-metadata:
-  name: test-secret
-  namespace: bmc
-type: Opaque
-data:
-  username: YWRtaW4=  # base64 encoded "admin"
-  password: cGFzc3dvcmQ=  # base64 encoded "password"
+  port: 8000
+# ---
+# # 对应的 Secret 示例
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: test-secret
+#   namespace: bmc
+# type: Opaque
+# data:
+#   username: YWRtaW4=  # base64 encoded "admin"
+#   password: cGFzc3dvcmQ=  # base64 encoded "password"
 {{- end}}

@@ -7,8 +7,11 @@ import (
 	"reflect"
 	"sync"
 
-	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
+	"time"
+
 	"github.com/spidernet-io/bmc/pkg/controller/template"
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
+	versioned "github.com/spidernet-io/bmc/pkg/k8s/client/clientset/versioned"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,14 +23,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"time"
 )
 
 // ClusterAgentReconciler reconciles a ClusterAgent object
 type ClusterAgentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	cache  sync.Map // Store ClusterAgent instances in local cache
+	Scheme    *runtime.Scheme
+	BmcClient *versioned.Clientset
+	cache     sync.Map // Store ClusterAgent instances in local cache
 }
 
 var GlobalControllerNS string
@@ -84,41 +87,52 @@ func (r *ClusterAgentReconciler) cleanupResources(ctx context.Context, name stri
 	// First remove from cache
 	r.cache.Delete(name)
 
+	agentName := fmt.Sprintf("agent-%s", name)
 	objects := []client.Object{
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("agent-%s", name),
+				Name:      agentName,
 				Namespace: GlobalControllerNS,
 			},
 		},
 		&corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("agent-%s", name),
+				Name:      agentName,
 				Namespace: GlobalControllerNS,
 			},
 		},
-		&rbacv1.Role{
+		&rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("agent-%s", name),
-				Namespace: GlobalControllerNS,
+				Name: agentName,
 			},
 		},
-		&rbacv1.RoleBinding{
+		&rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("agent-%s", name),
-				Namespace: GlobalControllerNS,
+				Name: agentName,
 			},
 		},
 	}
 
+	// 检查是否需要清除 PVC
+	if template.ShouldHandlePVC() {
+		pvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-dhcp-data", agentName),
+				Namespace: GlobalControllerNS,
+			},
+		}
+		objects = append(objects, pvc)
+		logger.Debugf("Adding PVC to cleanup list for %s/%s", GlobalControllerNS, agentName)
+	}
+
 	for _, obj := range objects {
 		if err := r.Delete(ctx, obj); err != nil && !errors.IsNotFound(err) {
-			logger.Errorf("Failed to delete resource %s/%s: %v", 
-				obj.GetNamespace(), obj.GetName(), err)
+			logger.Errorf("Failed to delete resource %T %s/%s: %v",
+				obj, obj.GetNamespace(), obj.GetName(), err)
 			return err
 		}
-		logger.Infof("Successfully deleted resource %s/%s", 
-			obj.GetNamespace(), obj.GetName())
+		logger.Infof("Successfully deleted resource %T %s/%s",
+			obj, obj.GetNamespace(), obj.GetName())
 	}
 
 	return nil
@@ -152,11 +166,11 @@ func (r *ClusterAgentReconciler) createOrUpdateResources(ctx context.Context, cl
 		Image:              agentImage,
 		Replicas:           replicas,
 		ServiceAccountName: name,
-		RoleName:          name,
+		RoleName:           name,
 		UnderlayInterface:  clusterAgent.Spec.AgentYaml.UnderlayInterface,
 		NodeAffinity:       clusterAgent.Spec.AgentYaml.NodeAffinity,
-		NodeName:          clusterAgent.Spec.AgentYaml.NodeName,
-		HostNetwork:       clusterAgent.Spec.AgentYaml.HostNetwork,
+		NodeName:           clusterAgent.Spec.AgentYaml.NodeName,
+		HostNetwork:        clusterAgent.Spec.AgentYaml.HostNetwork,
 	}
 
 	// Render resources from template
@@ -176,12 +190,12 @@ func (r *ClusterAgentReconciler) createOrUpdateResources(ctx context.Context, cl
 			return nil
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create/update resource %s %s/%s: %v",
-				kind, obj.GetNamespace(), obj.GetName(), err)
+			return fmt.Errorf("failed to create/update resource %T %s/%s: %v",
+				obj, obj.GetNamespace(), obj.GetName(), err)
 		}
 
-		logger.Infof("Resource operation completed: %s %s/%s (%s)",
-			kind, obj.GetNamespace(), obj.GetName(), result)
+		logger.Infof("Resource operation completed: %T %s/%s (%s)",
+			obj, obj.GetNamespace(), obj.GetName(), result)
 	}
 
 	// Store in cache
@@ -224,10 +238,11 @@ func (r *ClusterAgentReconciler) updateStatus(ctx context.Context, clusterAgent 
 		}
 	}
 
-	// Update status if it has changed
+	// 如果状态需要更新
 	if ready != clusterAgent.Status.Ready {
 		clusterAgent.Status.Ready = ready
 		if err := r.Status().Update(ctx, clusterAgent); err != nil {
+			logger.Errorf("failed to update clusterAgent %s: %+v", clusterAgent.Name, err)
 			return fmt.Errorf("failed to update status: %v", err), false
 		}
 		logger.Infof("Updated ClusterAgent status: ready=%v", ready)
@@ -235,6 +250,63 @@ func (r *ClusterAgentReconciler) updateStatus(ctx context.Context, clusterAgent 
 	}
 
 	return nil, false
+}
+
+// hasResourcesMissing 检查是否有必需的 k8s 资源缺失
+func (r *ClusterAgentReconciler) hasResourcesMissing(ctx context.Context, clusterAgent *bmcv1beta1.ClusterAgent, logger *zap.SugaredLogger) (bool, error) {
+	name := fmt.Sprintf("agent-%s", clusterAgent.Name)
+	requiredResources := []client.Object{
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: GlobalControllerNS,
+			},
+		},
+		&corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: GlobalControllerNS,
+			},
+		},
+		&rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+		},
+		&rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+		},
+	}
+
+	// 检查是否需要添加 PVC 检查
+	if template.ShouldHandlePVC() {
+		pvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-dhcp-data", name),
+				Namespace: GlobalControllerNS,
+			},
+		}
+		requiredResources = append(requiredResources, pvc)
+		logger.Debugf("Adding PVC check for %s/%s", GlobalControllerNS, name)
+	}
+
+	for _, obj := range requiredResources {
+		err := r.Get(ctx, client.ObjectKey{
+			Namespace: obj.GetNamespace(),
+			Name:      obj.GetName(),
+		}, obj)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Infof("Required resource %T %s/%s is missing",
+					obj, obj.GetNamespace(), obj.GetName())
+				return true, nil
+			}
+			return false, err
+		}
+	}
+	return false, nil
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop
@@ -247,8 +319,7 @@ func (r *ClusterAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// Get the ClusterAgent instance
 	clusterAgent := &bmcv1beta1.ClusterAgent{}
-	err := r.Get(ctx, req.NamespacedName, clusterAgent)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, clusterAgent); err != nil {
 		if errors.IsNotFound(err) {
 			logger.Infof("ClusterAgent resource not found: %s, initiating cleanup", req.Name)
 			if err := r.cleanupResources(ctx, req.Name, logger); err != nil {
@@ -262,9 +333,21 @@ func (r *ClusterAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// Get previous instance from cache
 	oldClusterAgent := r.getFromCache(req.Name)
 
-	// Check if spec has changed
+	needUpdateResrouce := false
 	if r.hasSpecChanged(oldClusterAgent, clusterAgent) {
 		logger.Infof("Spec changed, updating resources")
+		needUpdateResrouce = true
+	} else {
+		resourcesMissing, err := r.hasResourcesMissing(ctx, clusterAgent, logger)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if resourcesMissing {
+			logger.Infof("resources missing, updating resources")
+			needUpdateResrouce = true
+		}
+	}
+	if needUpdateResrouce {
 		if err := r.createOrUpdateResources(ctx, clusterAgent, logger); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -272,7 +355,7 @@ func (r *ClusterAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		r.storeInCache(req.Name, clusterAgent)
 		logger.Infof("succeeded to create k8s resource for agentCluster %s", clusterAgent.Name)
 	} else {
-		logger.Debugf("Spec unchanged, skipping resource update")
+		logger.Debugf("skipping resource update")
 	}
 
 	// Update status regardless of spec changes

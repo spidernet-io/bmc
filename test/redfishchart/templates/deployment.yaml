@@ -52,13 +52,15 @@ spec:
           set -o nounset
           echo "flush ip on {{ .Values.networkInterface }}"
           ip a 
-          ip addr flush dev {{ .Values.networkInterface }} || true
+          sleep 2
           (
+              ip addr flush dev {{ .Values.networkInterface }} || true          
               ipAddr="{{ .Values.staticIp }}/{{ .Values.staticMask }}"
               if [ -n "{{ .Values.staticIp }}" ] ; then
                 echo "set ip on {{ .Values.networkInterface }} to ${ipAddr}"
                 ip a a ${ipAddr} dev {{ .Values.networkInterface }}
                 touch /tmp/ready
+                ip a
               else
                 echo " renew dhcpClient on {{ .Values.networkInterface }}" 
                 while true ; do

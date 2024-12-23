@@ -2,7 +2,6 @@ package hoststatus
 
 import (
 	"context"
-	"reflect"
 	"time"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
@@ -10,6 +9,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func (c *hostStatusController) handleHostEndpointDelete(obj interface{}) {
+	hostEndpoint := obj.(*bmcv1beta1.HostEndpoint)
+	log.Logger.Debugf("HostEndpoint %s deleted, associated HostStatus will be garbage collected", hostEndpoint.Name)
+}
 
 func (c *hostStatusController) handleHostEndpointAdd(obj interface{}) {
 	hostEndpoint := obj.(*bmcv1beta1.HostEndpoint)
@@ -27,42 +31,6 @@ func (c *hostStatusController) handleHostEndpointAdd(obj interface{}) {
 	// Add to workqueue for retry handling
 	log.Logger.Debugf("Adding HostEndpoint %s to workqueue", hostEndpoint.Name)
 	c.workqueue.Add(hostEndpoint)
-}
-
-func (c *hostStatusController) processNextWorkItem() bool {
-	log.Logger.Debug("Trying to get next item from workqueue")
-	obj, shutdown := c.workqueue.Get()
-	if shutdown {
-		log.Logger.Debug("Workqueue is shutdown")
-		return false
-	}
-	defer c.workqueue.Done(obj)
-
-	hostEndpoint, ok := obj.(*bmcv1beta1.HostEndpoint)
-	if !ok {
-		log.Logger.Errorf("Expected HostEndpoint but got %s", reflect.TypeOf(obj))
-		c.workqueue.Forget(obj)
-		return true
-	}
-
-	log.Logger.Debugf("Processing HostEndpoint from workqueue: %s", hostEndpoint.Name)
-
-	err := c.processHostEndpoint(hostEndpoint)
-	if err == nil {
-		log.Logger.Debugf("Successfully processed HostEndpoint %s", hostEndpoint.Name)
-		c.workqueue.Forget(obj)
-		return true
-	}
-
-	if shouldRetry(err) {
-		log.Logger.Debugf("Error processing HostEndpoint %s (will retry): %v", hostEndpoint.Name, err)
-		c.workqueue.AddRateLimited(obj)
-	} else {
-		log.Logger.Errorf("Error processing HostEndpoint %s (giving up): %v", hostEndpoint.Name, err)
-		c.workqueue.Forget(obj)
-	}
-
-	return true
 }
 
 //--------------------------------------------
@@ -188,9 +156,4 @@ func specEqual(basic bmcv1beta1.BasicInfo, spec bmcv1beta1.HostEndpointSpec) boo
 		basic.SecretNamespace == spec.SecretNamespace &&
 		basic.Https == *spec.HTTPS &&
 		basic.Port == *spec.Port
-}
-
-func (c *hostStatusController) handleHostEndpointDelete(obj interface{}) {
-	hostEndpoint := obj.(*bmcv1beta1.HostEndpoint)
-	log.Logger.Debugf("HostEndpoint %s deleted, associated HostStatus will be garbage collected", hostEndpoint.Name)
 }

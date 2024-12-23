@@ -126,7 +126,7 @@ data:
         requests:
           storage: {{ .Values.clusterAgent.storage.pvc.size }}
   {{- end }}
-  agent-role.yaml: |
+  agent-clusterrole.yaml: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRole
     metadata:
@@ -144,7 +144,7 @@ data:
     - apiGroups: ["bmc.spidernet.io"]
       resources: ["clusteragents", "hoststatuses", "hostendpoints", "hoststatuses/status", "hostendpoints/status"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  agent-rolebinding.yaml: |
+  agent-clusterrolebinding.yaml: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     metadata:

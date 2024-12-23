@@ -183,9 +183,53 @@ status:
 
 请不要修改和本问题无关的其他代码
 
+//---------------
+
+在 pkg/agent/hoststatus/data 中实现一个 数据缓存的模块 ，定义如下
+
+type hostData struct {
+  Info *BasicInfo
+  Username string
+  Password string
+}
+
+type hostCache struct {
+  lock 
+  map[string]hostData
+}
+
+它可实现 数据存储, 提供如下方法
+
+1 初始化
+
+2 添加成员， 输入 name 和 hostData ， 存储到 hostCache 中的 map
+
+3 删除成员，输入 name
+
+
+ 
+
 ## dhcp 的 僵死 ip
 
 dhcp 不支持 主动探活 client ip  
 对于 hoststatus 中的 HEALTHREADY = false， 因此 需要手动 确认 
 然后 进入 agent pod 中， 删除  /var/lib/dhcp/bmc-clusteragent-dhcpd.leases 文件中的 无效 ip 即可 
+
+## redfish 接口
+ 
+在 pkg/redfish 下创建一个 redfish 模块， 它使用接口 interface 向外暴露 使用 
+
+它应该具备 多个方法，它们向 一个目的 发起 redfish 请求 ， 因此 每个方法都有 入参 @cache.go  中的 HostConnectCon 参数
+   ip 地址是  HostConnectCon.Info.IpAddr ， 
+   端口号是 HostConnectCon.Info.Port ， 
+   如果 HostConnectCon.Info.Https==true ，则发现 https 请求，否则发起 http 请求
+   如果 HostConnectCon.Username 和 HostConnectCon.Password 非空，则发起 http 的  用户名和密码 认证 来发送 请求
+
+redfish 通信库可使用 golang 库  https://pkg.go.dev/github.com/stmcginnis/gofish
+
+1 health 方法
+
+它向 使用 gofish 库，调用 ServiceRoot 方法 
+
+
 

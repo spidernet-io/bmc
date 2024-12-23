@@ -3,6 +3,7 @@ module github.com/spidernet-io/bmc
 go 1.23.1
 
 require (
+	github.com/stmcginnis/gofish v0.20.0
 	github.com/vishvananda/netlink v1.3.0
 	go.uber.org/zap v1.27.0
 	k8s.io/api v0.32.0

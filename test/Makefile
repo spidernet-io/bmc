@@ -39,7 +39,7 @@ deploy:
 	kind load docker-image $(AGENT_IMAGE_REF) --name $(KIND_CLUSTER_NAME)
 	@echo "Images loaded successfully"
 	@echo "Deploying application using Helm chart..."
-	- helm uninstall bmc -n bmc &>/dev/null || true
+	- helm uninstall bmc -n bmc --wait &>/dev/null || true
 	@echo "for macvlan deployment"
 	helm install bmc ../chart \
 		--namespace bmc \

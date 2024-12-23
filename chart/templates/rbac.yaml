@@ -24,6 +24,7 @@ rules:
   - endpoints
   - events
   - persistentvolumeclaims
+  - serviceaccounts
   verbs:
   - "*"
 - apiGroups:
@@ -42,8 +43,6 @@ rules:
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
-  - roles
-  - rolebindings
   - clusterroles
   - clusterrolebindings
   verbs:
@@ -62,32 +61,6 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{ .Release.Name }}-operator
-  labels:
-    {{- include "bmc-operator.labels" . | nindent 4 }}
-rules:
-- apiGroups: [""]
-  resources: ["serviceaccounts"]
-  verbs: ["*"]
-- apiGroups: ["apps"]
-  resources: ["deployments"]
-  verbs: ["*"]
-- apiGroups: ["bmc.spidernet.io"]
-  resources: ["clusteragents"]
-  verbs: ["*"]
-- apiGroups: ["bmc.spidernet.io"]
-  resources: ["clusteragents/status"]
-  verbs: ["*"]
-- apiGroups: ["bmc.spidernet.io"]
-  resources: ["hostendpoints"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-- apiGroups: ["bmc.spidernet.io"]
-  resources: ["hostendpoints/status"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ include "bmc-operator.fullname" . }}
@@ -97,21 +70,6 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: {{ include "bmc-operator.fullname" . }}
-subjects:
-- kind: ServiceAccount
-  name: {{ include "bmc-operator.serviceAccountName" . }}
-  namespace: {{ .Release.Namespace }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ .Release.Name }}-operator
-  labels:
-    {{- include "bmc-operator.labels" . | nindent 4 }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{ .Release.Name }}-operator
 subjects:
 - kind: ServiceAccount
   name: {{ include "bmc-operator.serviceAccountName" . }}
