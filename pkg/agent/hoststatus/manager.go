@@ -3,8 +3,11 @@ package hoststatus
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
+
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/spidernet-io/bmc/pkg/agent/config"
 	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
@@ -18,6 +21,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+const (
+	maxRetries = 3 // 最大重试次数
+)
+
 type HostStatusController interface {
 	Run(ctx context.Context) error
 	Stop()
@@ -26,6 +33,7 @@ type HostStatusController interface {
 
 type hostStatusController struct {
 	client         *crdclientset.BmcV1beta1Client
+	kubeClient     kubernetes.Interface
 	config         *config.AgentConfig
 	informer       cache.SharedIndexInformer
 	statusInformer cache.SharedIndexInformer
@@ -36,10 +44,11 @@ type hostStatusController struct {
 	wg             sync.WaitGroup
 }
 
-func NewHostStatusController(client *crdclientset.BmcV1beta1Client, config *config.AgentConfig) HostStatusController {
+func NewHostStatusController(client *crdclientset.BmcV1beta1Client, kubeClient kubernetes.Interface, config *config.AgentConfig) HostStatusController {
 	log.Logger.Debugf("Creating new HostStatus controller for cluster agent: %s", config.ClusterAgentName)
 	controller := &hostStatusController{
 		client:     client,
+		kubeClient: kubeClient,
 		config:     config,
 		workqueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		addChan:    make(chan types.ClientInfo),
@@ -162,4 +171,47 @@ func (c *hostStatusController) Stop() {
 
 func formatHostStatusName(agentName, ip string) string {
 	return fmt.Sprintf("%s-%s", agentName, strings.ReplaceAll(ip, ".", "-"))
+}
+
+//----------------
+
+func (c *hostStatusController) processNextWorkItem() bool {
+	log.Logger.Debug("Trying to get next item from workqueue")
+	obj, shutdown := c.workqueue.Get()
+	if shutdown {
+		log.Logger.Debug("Workqueue is shutdown")
+		return false
+	}
+	defer c.workqueue.Done(obj)
+
+	var err error
+	switch item := obj.(type) {
+	case *bmcv1beta1.HostEndpoint:
+		log.Logger.Debugf("Processing HostEndpoint from workqueue: %s", item.Name)
+		err = c.processHostEndpoint(item)
+	case *bmcv1beta1.HostStatus:
+		log.Logger.Debugf("Processing HostStatus from workqueue: %s", item.Name)
+		err = c.processHostStatus(item)
+	default:
+		log.Logger.Errorf("Unexpected type in workqueue: %s", reflect.TypeOf(obj))
+		c.workqueue.Forget(obj)
+		return true
+	}
+
+	if err == nil {
+		c.workqueue.Forget(obj)
+		return true
+	}
+
+	// 如果处理失败且重试次数未超过限制，重新入队
+	if c.workqueue.NumRequeues(obj) < maxRetries {
+		log.Logger.Warnf("Error processing object: %v, retrying", err)
+		c.workqueue.AddRateLimited(obj)
+		return true
+	}
+
+	// 如果重试次数超过限制，放弃处理
+	log.Logger.Errorf("Dropping object after %d retries: %v", maxRetries, err)
+	c.workqueue.Forget(obj)
+	return true
 }

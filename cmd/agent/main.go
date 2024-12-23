@@ -59,7 +59,7 @@ func main() {
 	}()
 
 	// Initialize hoststatus controller
-	hostStatusCtrl := hoststatus.NewHostStatusController(runtimeClient, agentConfig)
+	hostStatusCtrl := hoststatus.NewHostStatusController(runtimeClient, k8sClient, agentConfig)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -77,7 +77,7 @@ func main() {
 		log.Logger.Info("Starting DHCP server...")
 		var err error
 		dhcpSrv, err = dhcpserver.NewDhcpServer(
-			agentConfig.AgentObjSpec.Feature.DhcpServerConfig, 
+			agentConfig.AgentObjSpec.Feature.DhcpServerConfig,
 			agentConfig.ClusterAgentName,
 			addChan,
 			deleteChan,
