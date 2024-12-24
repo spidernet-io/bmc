@@ -142,7 +142,7 @@ data:
       resources: ["deployments"]
       verbs: ["get", "list", "watch"]
     - apiGroups: ["bmc.spidernet.io"]
-      resources: ["clusteragents", "hoststatuses", "hostendpoints", "hoststatuses/status", "hostendpoints/status"]
+      resources: ["clusteragents", "hoststatuses", "hostendpoints", "hoststatuses/status", "hostendpoints/status", "hostoperations", "hostoperations/status"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   agent-clusterrolebinding.yaml: |
     apiVersion: rbac.authorization.k8s.io/v1

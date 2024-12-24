@@ -31,13 +31,15 @@ rules:
   - bmc.spidernet.io
   resources:
   - bmcservers
-  - clusteragents
   - bmcservers/status
+  - clusteragents
   - clusteragents/status
   - hostendpoints
   - hostendpoints/status
   - hoststatuses
   - hoststatuses/status
+  - hostoperations
+  - hostoperations/status
   verbs:
   - "*"
 - apiGroups:

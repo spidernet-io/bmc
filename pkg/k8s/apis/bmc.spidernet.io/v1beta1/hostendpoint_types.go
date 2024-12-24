@@ -8,6 +8,8 @@ import (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:name="CLUSTERAGENT",type="string",JSONPath=".spec.clusterAgent"
+// +kubebuilder:printcolumn:name="HOSTIP",type="string",JSONPath=".spec.ipAddr"
 
 // HostEndpoint is the Schema for the hostendpoints API
 type HostEndpoint struct {

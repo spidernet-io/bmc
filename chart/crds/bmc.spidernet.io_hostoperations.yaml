@@ -4,27 +4,32 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: (unknown)
-  name: hostendpoints.bmc.spidernet.io
+  name: hostoperations.bmc.spidernet.io
 spec:
   group: bmc.spidernet.io
   names:
-    kind: HostEndpoint
-    listKind: HostEndpointList
-    plural: hostendpoints
-    singular: hostendpoint
+    kind: HostOperation
+    listKind: HostOperationList
+    plural: hostoperations
+    singular: hostoperation
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.clusterAgent
+    - jsonPath: .spec.action
+      name: ACTION
+      type: string
+    - jsonPath: .status.status
+      name: STATUS
+      type: string
+    - jsonPath: .status.clusterAgent
       name: CLUSTERAGENT
       type: string
-    - jsonPath: .spec.ipAddr
+    - jsonPath: .status.ipAddr
       name: HOSTIP
       type: string
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: HostEndpoint is the Schema for the hostendpoints API
         properties:
           apiVersion:
             description: |-
@@ -44,35 +49,39 @@ spec:
           metadata:
             type: object
           spec:
-            description: HostEndpointSpec defines the desired state of HostEndpoint
             properties:
-              clusterAgent:
-                description: ClusterAgent specifies which clusterAgent this hostEndpoint
-                  belongs to
+              action:
+                enum:
+                - powerOff
+                - powerOn
+                - reboot
+                - pxeReboot
                 type: string
-              https:
-                default: true
-                description: HTTPS specifies whether to use HTTPS for communication
-                type: boolean
-              ipAddr:
-                description: IPAddr is the IP address of the host endpoint
-                type: string
-              port:
-                default: 443
-                description: Port specifies the port number for communication
-                format: int32
-                type: integer
-              secretName:
-                description: SecretName is the name of the secret containing credentials
-                type: string
-              secretNamespace:
-                description: SecretNamespace is the namespace of the secret containing
-                  credentials
+              hostStatusName:
                 type: string
             required:
-            - ipAddr
+            - action
+            - hostStatusName
+            type: object
+          status:
+            properties:
+              clusterAgent:
+                type: string
+              ipAddr:
+                type: string
+              lastUpdateTime:
+                type: string
+              message:
+                type: string
+              status:
+                enum:
+                - pending
+                - success
+                - failure
+                type: string
             type: object
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}
