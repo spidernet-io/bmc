@@ -38,11 +38,18 @@ func (c *hostStatusController) getSecretData(secretName, secretNamespace string)
 
 // processHostStatus 处理 HostStatus 对象
 func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStatus) error {
+
+	if len(hostStatus.Status.Basic.IpAddr) == 0 {
+		// the hostStatus is created firstly and then be updated with its status
+		log.Logger.Debugf("ingore hostStatus %s just created", hostStatus.Name)
+		return nil
+	}
+
 	log.Logger.Debugf("Processing HostStatus: %s (Type: %s, IP: %s, Health: %v)",
 		hostStatus.Name,
 		hostStatus.Status.Basic.Type,
 		hostStatus.Status.Basic.IpAddr,
-		hostStatus.Status.HealthReady)
+		hostStatus.Status.Healthy)
 
 	username, password, err := c.getSecretData(
 		hostStatus.Status.Basic.SecretName,
@@ -62,7 +69,7 @@ func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStat
 		Password: password,
 	})
 	// update the crd
-	c.UpdateHostStatus(hostStatus.Name)
+	c.UpdateHostStatusWrapper(hostStatus.Name)
 
 	log.Logger.Debugf("Successfully processed HostStatus %s", hostStatus.Name)
 	return nil
@@ -83,7 +90,7 @@ func (c *hostStatusController) handleHostStatusAdd(obj interface{}) {
 func (c *hostStatusController) handleHostStatusUpdate(old, new interface{}) {
 	hostStatus := new.(*bmcv1beta1.HostStatus)
 	log.Logger.Debugf("HostStatus updated: %s (Type: %s, IP: %s, Health: %v)",
-		hostStatus.Name, hostStatus.Status.Basic.Type, hostStatus.Status.Basic.IpAddr, hostStatus.Status.HealthReady)
+		hostStatus.Name, hostStatus.Status.Basic.Type, hostStatus.Status.Basic.IpAddr, hostStatus.Status.Healthy)
 
 	// 添加到工作队列进行处理
 	c.workqueue.Add(hostStatus)

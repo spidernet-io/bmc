@@ -42,7 +42,7 @@ func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error 
 
 	// 检查健康状态
 	healthy := client.Health()
-	updated.Status.HealthReady = healthy
+	updated.Status.Healthy = healthy
 	if healthy {
 		infoData, err := client.GetInfo()
 		if err != nil {
@@ -56,8 +56,8 @@ func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error 
 		log.Logger.Debugf("HostStatus %s is not healthy, set info to empty", name)
 		updated.Status.Info = map[string]string{}
 	}
-	if updated.Status.HealthReady != existing.Status.HealthReady {
-		log.Logger.Infof("HostStatus %s change from %v to %v , update status", name, existing.Status.HealthReady, healthy)
+	if updated.Status.Healthy != existing.Status.Healthy {
+		log.Logger.Infof("HostStatus %s change from %v to %v , update status", name, existing.Status.Healthy, healthy)
 	}
 
 	// 更新 HostStatus
@@ -76,7 +76,7 @@ func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error 
 	return nil
 }
 
-func (c *hostStatusController) UpdateHostStatus(name string) error {
+func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 	syncData := make(map[string]data.HostConnectCon)
 
 	if len(name) == 0 {
@@ -119,7 +119,7 @@ func (c *hostStatusController) UpdateHostStatusAtInterval() {
 			return
 		case <-ticker.C:
 			log.Logger.Debugf("update all hostStatus at interval ")
-			if err := c.UpdateHostStatus(""); err != nil {
+			if err := c.UpdateHostStatusWrapper(""); err != nil {
 				log.Logger.Errorf("Failed to update host status: %v", err)
 			}
 		}

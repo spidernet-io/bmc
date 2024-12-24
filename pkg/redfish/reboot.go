@@ -19,6 +19,33 @@ const (
 // https://github.com/stmcginnis/gofish/blob/main/examples/reboot.md
 // https://github.com/DMTF/Redfish-Tacklebox/blob/main/scripts/rf_power_reset.py
 // post request to systems
+/*
+# curl -u "" -k https://10.64.64.94/redfish/v1/Systems/1/ResetActionInfo
+{
+  "@odata.type": "#ActionInfo.v1_1_2.ActionInfo",
+  "@odata.id": "/redfish/v1/Systems/1/ResetActionInfo",
+  "Id": "ResetActionInfo",
+  "Name": "Reset Action Info",
+  "Parameters": [
+    {
+      "Name": "ResetType",
+      "Required": true,
+      "DataType": "String",
+      "AllowableValues": [
+        "On",
+        "ForceOff",
+        "GracefulShutdown",
+        "GracefulRestart",
+        "ForceRestart",
+        "Nmi",
+        "ForceOn",
+        "PowerCycle"
+      ]
+    }
+  ],
+  "Oem": {}
+}
+*/
 func (c *redfishClient) Reboot(bootCmd BootCmd) error {
 
 	// 创建 gofish 客户端
