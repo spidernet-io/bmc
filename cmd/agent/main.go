@@ -3,16 +3,24 @@ package main
 import (
 	"context"
 	"flag"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
 	"github.com/spidernet-io/bmc/pkg/agent/config"
+	"github.com/spidernet-io/bmc/pkg/agent/hostoperation"
 	"github.com/spidernet-io/bmc/pkg/agent/hoststatus"
-	"github.com/spidernet-io/bmc/pkg/agent/server"
 	"github.com/spidernet-io/bmc/pkg/dhcpserver"
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	crdclientset "github.com/spidernet-io/bmc/pkg/k8s/client/clientset/versioned/typed/bmc.spidernet.io/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"k8s.io/client-go/kubernetes"
@@ -20,14 +28,27 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+var (
+	scheme = runtime.NewScheme()
+)
+
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(bmcv1beta1.AddToScheme(scheme))
+}
+
 func main() {
 	// Parse command line flags
-	healthPort := flag.Int("health-port", 8080, "Port for health check server")
+	metricsAddr := flag.String("metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	probeAddr := flag.String("health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.Parse()
 
 	// Initialize logger
 	logLevel := os.Getenv("LOG_LEVEL")
 	log.InitStdoutLogger(logLevel)
+
+	// Set controller-runtime logger
+	ctrl.SetLogger(zap.New())
 
 	log.Logger.Info("Starting BMC agent")
 
@@ -49,14 +70,18 @@ func main() {
 	log.Logger.Debug("Agent configuration details:")
 	log.Logger.Debug(agentConfig.GetDetailString())
 
-	// Create and start HTTP server for health checks
-	srv := server.NewServer(int32(*healthPort))
-	go func() {
-		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
-			log.Logger.Errorf("Health check server failed: %v", err)
-			os.Exit(1)
-		}
-	}()
+	// Create manager
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: *metricsAddr,
+		},
+		HealthProbeBindAddress: *probeAddr,
+	})
+	if err != nil {
+		log.Logger.Errorf("Unable to start manager: %v", err)
+		os.Exit(1)
+	}
 
 	// Initialize hoststatus controller
 	hostStatusCtrl := hoststatus.NewHostStatusController(runtimeClient, k8sClient, agentConfig)
@@ -65,6 +90,18 @@ func main() {
 
 	if err := hostStatusCtrl.Run(ctx); err != nil {
 		log.Logger.Errorf("Failed to start hoststatus controller: %v", err)
+		os.Exit(1)
+	}
+
+	// Initialize hostoperation controller
+	hostOperationCtrl, err := hostoperation.NewHostOperationController(mgr, agentConfig)
+	if err != nil {
+		log.Logger.Errorf("Failed to create hostoperation controller: %v", err)
+		os.Exit(1)
+	}
+
+	if err = hostOperationCtrl.SetupWithManager(mgr); err != nil {
+		log.Logger.Errorf("Unable to create hostoperation controller: %v", err)
 		os.Exit(1)
 	}
 
@@ -94,6 +131,25 @@ func main() {
 		log.Logger.Info("DHCP server started successfully")
 	}
 
+	// Add health check
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		log.Logger.Errorf("Unable to set up health check: %v", err)
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		log.Logger.Errorf("Unable to set up ready check: %v", err)
+		os.Exit(1)
+	}
+
+	// Start manager
+	go func() {
+		log.Logger.Info("Starting manager")
+		if err := mgr.Start(ctx); err != nil {
+			log.Logger.Errorf("Problem running manager: %v", err)
+			os.Exit(1)
+		}
+	}()
+
 	// Setup signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
@@ -120,10 +176,8 @@ func main() {
 			// Stop hoststatus controller
 			hostStatusCtrl.Stop()
 
-			// Graceful shutdown of HTTP server
-			if err := srv.Shutdown(context.Background()); err != nil {
-				log.Logger.Errorf("Error shutting down HTTP server: %v", err)
-			}
+			// Cancel context to stop manager
+			cancel()
 
 			return
 		}

@@ -13,7 +13,7 @@ import (
 type RefishClient interface {
 	// Health 检查 Redfish 服务的健康状态
 	Health() bool
-	Reboot(BootCmd) error
+	Power(BootCmd) error
 	GetInfo() (map[string]string, error)
 }
 

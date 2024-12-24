@@ -4,6 +4,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	HostOperationStatusPending = "pending"
+	HostOperationStatusSuccess = "success"
+	HostOperationStatusFailed  = "failed"
+)
+
+const (
+	HostOperationActionReboot    = "reboot"
+	HostOperationActionPowerOff  = "powerOff"
+	HostOperationActionPowerOn   = "powerOn"
+	HostOperationActionPxeReboot = "pxeReboot"
+)
+
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

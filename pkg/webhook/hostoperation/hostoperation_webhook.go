@@ -41,35 +41,6 @@ func (h *HostOperationWebhook) Default(ctx context.Context, obj runtime.Object) 
 
 	log.Logger.Debugf("Processing Default webhook for HostOperation %s", hostOp.Name)
 
-	// // 初始化状态为 pending
-	// if hostOp.Status.Status == "" {
-	// 	hostOp.Status.Status = "pending"
-	// 	log.Logger.Debugf("Initializing HostOperation %s status to pending", hostOp.Name)
-	// }
-
-	// // 设置最后更新时间
-	// if hostOp.Status.LastUpdateTime == "" {
-	// 	hostOp.Status.LastUpdateTime = time.Now().UTC().Format(time.RFC3339)
-	// 	log.Logger.Debugf("Setting LastUpdateTime for HostOperation %s to %s", hostOp.Name, hostOp.Status.LastUpdateTime)
-	// }
-
-	// // 根据 hostStatusName 查找对应的 HostStatus
-	// var hostStatus bmcv1beta1.HostStatus
-	// if err := h.Client.Get(ctx, client.ObjectKey{Name: hostOp.Spec.HostStatusName}, &hostStatus); err != nil {
-	// 	err = fmt.Errorf("failed to get HostStatus %s: %v", hostOp.Spec.HostStatusName, err)
-	// 	log.Logger.Errorf(err.Error())
-	// 	return err
-	// }
-
-	// // 设置 clusterAgent
-	// hostOp.Status.ClusterAgent = hostStatus.Status.ClusterAgent
-	// log.Logger.Debugf("Setting ClusterAgent for HostOperation %s to %s", hostOp.Name, hostOp.Status.ClusterAgent)
-
-	// if hostOp.Status.IpAddr == "" {
-	// 	hostOp.Status.IpAddr = hostStatus.Status.Basic.IpAddr
-	// 	log.Logger.Debugf("Setting IpAddr for HostOperation %s to %s", hostOp.Name, hostOp.Status.IpAddr)
-	// }
-
 	log.Logger.Debugf("Successfully processed Default webhook for HostOperation %s", hostOp.Name)
 	return nil
 }
@@ -85,6 +56,12 @@ func (h *HostOperationWebhook) ValidateCreate(ctx context.Context, obj runtime.O
 	}
 
 	log.Logger.Debugf("Processing ValidateCreate webhook for HostOperation %s", hostOp.Name)
+
+	if hostOp.Spec.Action != bmcv1beta1.HostOperationActionReboot && hostOp.Spec.Action != bmcv1beta1.HostOperationActionPowerOff && hostOp.Spec.Action != bmcv1beta1.HostOperationActionPowerOn && hostOp.Spec.Action != bmcv1beta1.HostOperationActionPxeReboot {
+		err := fmt.Errorf("invalid action %s", hostOp.Spec.Action)
+		log.Logger.Errorf(err.Error())
+		return nil, err
+	}
 
 	// 验证 hostStatusName 对应的 HostStatus 是否存在且健康
 	var hostStatus bmcv1beta1.HostStatus

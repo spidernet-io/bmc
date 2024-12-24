@@ -53,11 +53,12 @@ data:
             - name: CLUSTERAGENT_NAME
               value: {{`{{ .ClusterName }}`}}
             args:
-            - --health-port=8080
+            - --metrics-bind-address=:8080
+            - --health-probe-bind-address=:8081
             readinessProbe:
               httpGet:
                 path: /readyz
-                port: 8080
+                port: 8081
               initialDelaySeconds: 5
               periodSeconds: 10
               timeoutSeconds: 5
@@ -66,7 +67,7 @@ data:
             livenessProbe:
               httpGet:
                 path: /healthz
-                port: 8080
+                port: 8081
               initialDelaySeconds: 15
               periodSeconds: 20
               timeoutSeconds: 5
