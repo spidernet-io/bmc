@@ -18,8 +18,8 @@ spec:
     - jsonPath: .status.clusterAgent
       name: CLUSTERAGENT
       type: string
-    - jsonPath: .status.healthReady
-      name: HEALTHREADY
+    - jsonPath: .status.healthy
+      name: HEALTHY
       type: boolean
     - jsonPath: .status.basic.ipAddr
       name: IPADDR
@@ -78,7 +78,7 @@ spec:
                 type: object
               clusterAgent:
                 type: string
-              healthReady:
+              healthy:
                 type: boolean
               info:
                 additionalProperties:
@@ -89,7 +89,7 @@ spec:
             required:
             - basic
             - clusterAgent
-            - healthReady
+            - healthy
             - info
             - lastUpdateTime
             type: object

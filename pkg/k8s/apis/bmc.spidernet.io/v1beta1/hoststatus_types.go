@@ -10,7 +10,7 @@ import (
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 // +kubebuilder:printcolumn:name="CLUSTERAGENT",type="string",JSONPath=".status.clusterAgent"
-// +kubebuilder:printcolumn:name="HEALTHREADY",type="boolean",JSONPath=".status.healthReady"
+// +kubebuilder:printcolumn:name="HEALTHY",type="boolean",JSONPath=".status.healthy"
 // +kubebuilder:printcolumn:name="IPADDR",type="string",JSONPath=".status.basic.ipAddr"
 // +kubebuilder:printcolumn:name="TYPE",type="string",JSONPath=".status.basic.type"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
@@ -23,7 +23,7 @@ type HostStatus struct {
 }
 
 type HostStatusStatus struct {
-	HealthReady    bool              `json:"healthReady"`
+	Healthy        bool              `json:"healthy"`
 	ClusterAgent   string            `json:"clusterAgent"`
 	LastUpdateTime string            `json:"lastUpdateTime"`
 	Basic          BasicInfo         `json:"basic"`

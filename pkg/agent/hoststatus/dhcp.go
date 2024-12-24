@@ -121,7 +121,7 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 	// we update its status. This ensures that the status is properly set and visible
 	// immediately, without requiring a controller restart or reconciliation.
 	created.Status = bmcv1beta1.HostStatusStatus{
-		HealthReady:    false,
+		Healthy:        false,
 		ClusterAgent:   c.config.ClusterAgentName,
 		LastUpdateTime: time.Now().UTC().Format(time.RFC3339),
 		Basic: bmcv1beta1.BasicInfo{
