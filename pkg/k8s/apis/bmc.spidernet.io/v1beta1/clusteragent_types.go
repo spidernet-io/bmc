@@ -144,7 +144,7 @@ type FeatureConfig struct {
 // ClusterAgentStatus defines the observed state of ClusterAgent
 type ClusterAgentStatus struct {
 	// Whether the agent is ready
-	// +optional
+	// +kubebuilder:default=true
 	Ready bool `json:"ready,omitempty"`
 }
 

@@ -349,6 +349,7 @@ spec:
             description: ClusterAgentStatus defines the observed state of ClusterAgent
             properties:
               ready:
+                default: true
                 description: Whether the agent is ready
                 type: boolean
             type: object
