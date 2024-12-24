@@ -58,9 +58,9 @@ func (w *HostEndpointWebhook) Default(ctx context.Context, obj runtime.Object) e
 	}
 
 	if hostEndpoint.Spec.Port == nil {
-		defaultPort := int32(80)
+		defaultPort := int32(443)
 		hostEndpoint.Spec.Port = &defaultPort
-		log.Logger.Infof("Setting default Port to 80 for HostEndpoint %s", hostEndpoint.Name)
+		log.Logger.Infof("Setting default Port to 443 for HostEndpoint %s", hostEndpoint.Name)
 	}
 
 	if hostEndpoint.Spec.SecretName == "" {
@@ -124,18 +124,18 @@ func (w *HostEndpointWebhook) validateHostEndpoint(ctx context.Context, hostEndp
 		return fmt.Errorf("invalid IP address, it should be like 192.168.0.10 ")
 	}
 
-	if clusterAgent.Spec.Feature == nil || clusterAgent.Spec.Feature.DhcpServerConfig == nil {
-		return fmt.Errorf("spec.DhcpServerConfig not found in clusterAgent %s", clusterAgent.Name)
-	}
+	// if clusterAgent.Spec.Feature == nil || clusterAgent.Spec.Feature.DhcpServerConfig == nil {
+	// 	return fmt.Errorf("spec.DhcpServerConfig not found in clusterAgent %s", clusterAgent.Name)
+	// }
 
-	_, subnet, err := net.ParseCIDR(clusterAgent.Spec.Feature.DhcpServerConfig.Subnet)
-	if err != nil {
-		return fmt.Errorf("invalid DhcpServerConfig.Subnet %q in clusterAgent %s: %v", clusterAgent.Spec.Feature.DhcpServerConfig.Subnet, clusterAgent.Name, err)
-	}
+	// _, subnet, err := net.ParseCIDR(clusterAgent.Spec.Feature.DhcpServerConfig.Subnet)
+	// if err != nil {
+	// 	return fmt.Errorf("invalid DhcpServerConfig.Subnet %q in clusterAgent %s: %v", clusterAgent.Spec.Feature.DhcpServerConfig.Subnet, clusterAgent.Name, err)
+	// }
 
-	if !subnet.Contains(ip) {
-		return fmt.Errorf("IP address %s is not in clusterAgent DhcpServerConfig.Subnet %s", hostEndpoint.Spec.IPAddr, clusterAgent.Spec.Feature.DhcpServerConfig.Subnet)
-	}
+	// if !subnet.Contains(ip) {
+	// 	return fmt.Errorf("IP address %s is not in clusterAgent DhcpServerConfig.Subnet %s", hostEndpoint.Spec.IPAddr, clusterAgent.Spec.Feature.DhcpServerConfig.Subnet)
+	// }
 
 	// Check for IP address uniqueness
 	var existingHostEndpoints bmcv1beta1.HostEndpointList

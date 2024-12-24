@@ -132,7 +132,7 @@ func (c *hostStatusController) processHostEndpoint(hostEndpoint *bmcv1beta1.Host
 			Https:           *hostEndpoint.Spec.HTTPS,
 			Port:            *hostEndpoint.Spec.Port,
 		},
-		Info: bmcv1beta1.Info{},
+		Info: map[string]string{},
 	}
 
 	if _, err := c.client.HostStatuses().UpdateStatus(context.Background(), created, metav1.UpdateOptions{}); err != nil {

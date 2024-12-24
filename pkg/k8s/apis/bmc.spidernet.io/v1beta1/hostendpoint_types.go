@@ -42,7 +42,7 @@ type HostEndpointSpec struct {
 
 	// Port specifies the port number for communication
 	// +optional
-	// +kubebuilder:default=80
+	// +kubebuilder:default=443
 	Port *int32 `json:"port,omitempty"`
 }
 

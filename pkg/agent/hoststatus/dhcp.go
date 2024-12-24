@@ -51,8 +51,6 @@ func (c *hostStatusController) processDHCPEvents(ctx context.Context) {
 	}
 }
 
-
-
 func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error {
 
 	name := formatHostStatusName(c.config.ClusterAgentName, client.IP)
@@ -133,7 +131,7 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 			Port:   c.config.AgentObjSpec.Endpoint.Port,
 			Https:  c.config.AgentObjSpec.Endpoint.HTTPS,
 		},
-		Info: bmcv1beta1.Info{},
+		Info: map[string]string{},
 	}
 
 	if _, err := c.client.HostStatuses().UpdateStatus(context.Background(), created, metav1.UpdateOptions{}); err != nil {

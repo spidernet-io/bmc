@@ -30,7 +30,7 @@ installDepsRedfish:
 	E2E_CLUSTER_NAME=$(KIND_CLUSTER_NAME)  UNDERLAY_CNI="spiderpool/eth0-macvlan" \
 			STATIC_IP="192.168.0.50/24"  \
 			./scripts/install-redfish-static.sh
-
+	./scripts/hostendpoint.sh
 
 # Deploy application to kind cluster
 deploy:

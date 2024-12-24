@@ -17,31 +17,42 @@ func (c *redfishClient) Health() bool {
 	return true
 }
 
+func setData(result map[string]string, key, value string) {
+	if len(value) == 0 {
+		result[key] = ""
+	} else {
+		result[key] = value
+	}
+	return
+}
+
 // Health 实现健康检查方法
-func (c *redfishClient) GetInfo() error {
+func (c *redfishClient) GetInfo() (map[string]string, error) {
+
+	result := map[string]string{}
 
 	// 创建 gofish 客户端
 	client, err := gofish.Connect(c.config)
 	if err != nil {
 		c.logger.Errorf("failed to connect: %+v", err)
-		return err
+		return nil, err
 	}
 	defer client.Logout()
 
 	// Attached the client to service root
 	service := client.Service
 
-	c.logger.Debugf("RedfishVersion: %v", service.RedfishVersion)
-	c.logger.Debugf("Vendor: %v", service.Vendor)
+	setData(result, "RedfishVersion", service.RedfishVersion)
+	setData(result, "Vendor", service.Vendor)
 
 	// Query the computer systems
 	ss, err := service.Systems()
 	if err != nil {
 		c.logger.Errorf("failed to Query the computer systems: %+v", err)
-		return err
+		return nil, err
 	} else if len(ss) == 0 {
 		c.logger.Errorf("failed to get system")
-		return fmt.Errorf("failed to get system")
+		return nil, fmt.Errorf("failed to get system")
 	}
 	c.logger.Debugf("system amount: %d", len(ss))
 	for n, t := range ss {
@@ -49,29 +60,37 @@ func (c *redfishClient) GetInfo() error {
 	}
 	// for barel metal case,
 	system := ss[0]
-	c.logger.Debugf("BiosVerison: %v", system.BIOSVersion)
-	c.logger.Debugf("HostName: %v", system.HostName)
-	c.logger.Debugf("Manufacturer: %v", system.Manufacturer)
-	c.logger.Debugf("MemoryGiB: %v", system.MemorySummary.TotalSystemMemoryGiB)
-	c.logger.Debugf("CpuPhysicalCore: %v", system.ProcessorSummary.Count)
-	c.logger.Debugf("PowerState: %v", system.PowerState)
-	c.logger.Debugf("Status: %v", system.Status.Health)
+	setData(result, "BiosVerison", system.BIOSVersion)
+	setData(result, "HostName", system.HostName)
+	setData(result, "Manufacturer", system.Manufacturer)
+	setData(result, "MemoryGiB", fmt.Sprintf("%f", system.MemorySummary.TotalSystemMemoryGiB))
+	setData(result, "CpuPhysicalCore", fmt.Sprintf("%d", system.ProcessorSummary.Count))
+	setData(result, "CpuLogicalCore", fmt.Sprintf("%d", system.ProcessorSummary.LogicalProcessorCount))
+	setData(result, "PowerState", string(system.PowerState))
+	setData(result, "SyatemStatus", string(system.Status.Health))
+
+	// optional: in old redfish version, the following fields are missing
+	pcieList, err := system.PCIeDevices()
+	if err == nil && len(pcieList) > 0 {
+		c.logger.Debugf("PCIeDevices: %v", pcieList)
+	}
 
 	// Query the managers for bmc
 	managers, err := service.Managers()
 	if err != nil {
 		c.logger.Errorf("failed to Query the bmc : %+v", err)
-		return err
+		return nil, err
 	} else if len(managers) == 0 {
 		c.logger.Errorf("failed to get bmc")
-		return fmt.Errorf("failed to get bmc")
+		return nil, fmt.Errorf("failed to get bmc")
 	}
 	c.logger.Debugf("bmc amount: %d", len(managers))
 	for n, t := range managers {
 		c.logger.Debugf("bmc[%d]: %+v", n, *t)
 	}
 	bmc := managers[0]
-	c.logger.Debugf("BmcFirmwareVersion: %v", bmc.FirmwareVersion)
+	setData(result, "BmcFirmwareVersion", bmc.FirmwareVersion)
+	setData(result, "BmcStatus", string(bmc.Status.Health))
 
-	return nil
+	return result, nil
 }

@@ -232,7 +232,7 @@ func GetDhcpClients(leaseFilePath string) ([]types.ClientInfo, error) {
 			continue
 		}
 
-		log.Logger.Debugf("Processing line: %s", line)
+		//log.Logger.Debugf("Processing line: %s", line)
 
 		// Start of a lease block
 		if strings.HasPrefix(line, "lease") {

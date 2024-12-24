@@ -14,6 +14,8 @@ const (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:scope=Cluster
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="ready",type="boolean",JSONPath=".status.ready"
 
 // ClusterAgent is the Schema for the clusteragents API
 type ClusterAgent struct {
@@ -142,7 +144,7 @@ type FeatureConfig struct {
 // ClusterAgentStatus defines the observed state of ClusterAgent
 type ClusterAgentStatus struct {
 	// Whether the agent is ready
-	// +optional
+	// +kubebuilder:default=true
 	Ready bool `json:"ready,omitempty"`
 }
 

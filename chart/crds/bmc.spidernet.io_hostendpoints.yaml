@@ -51,7 +51,7 @@ spec:
                 description: IPAddr is the IP address of the host endpoint
                 type: string
               port:
-                default: 80
+                default: 443
                 description: Port specifies the port number for communication
                 format: int32
                 type: integer
