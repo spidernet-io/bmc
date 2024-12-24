@@ -1,4 +1,4 @@
-NAME=device1
+NAME=device-dangerous
 USERNAME=ADMIN
 PASSWORD=NSHETVTLJA
 IP_ADDR=10.64.64.94
@@ -32,7 +32,7 @@ EOF
 
 
 
-NAME=device2
+NAME=device-safe
 USERNAME=ADMIN
 PASSWORD=DaoCloudPassw0rd
 IP_ADDR=10.64.64.42
