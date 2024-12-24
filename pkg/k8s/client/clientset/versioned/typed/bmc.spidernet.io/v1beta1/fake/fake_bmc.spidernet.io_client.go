@@ -23,6 +23,10 @@ func (c *FakeBmcV1beta1) HostEndpoints() v1beta1.HostEndpointInterface {
 	return newFakeHostEndpoints(c)
 }
 
+func (c *FakeBmcV1beta1) HostOperations() v1beta1.HostOperationInterface {
+	return newFakeHostOperations(c)
+}
+
 func (c *FakeBmcV1beta1) HostStatuses() v1beta1.HostStatusInterface {
 	return newFakeHostStatuses(c)
 }

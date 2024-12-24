@@ -15,6 +15,8 @@ type Interface interface {
 	ClusterAgents() ClusterAgentInformer
 	// HostEndpoints returns a HostEndpointInformer.
 	HostEndpoints() HostEndpointInformer
+	// HostOperations returns a HostOperationInformer.
+	HostOperations() HostOperationInformer
 	// HostStatuses returns a HostStatusInformer.
 	HostStatuses() HostStatusInformer
 }
@@ -38,6 +40,11 @@ func (v *version) ClusterAgents() ClusterAgentInformer {
 // HostEndpoints returns a HostEndpointInformer.
 func (v *version) HostEndpoints() HostEndpointInformer {
 	return &hostEndpointInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// HostOperations returns a HostOperationInformer.
+func (v *version) HostOperations() HostOperationInformer {
+	return &hostOperationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // HostStatuses returns a HostStatusInformer.

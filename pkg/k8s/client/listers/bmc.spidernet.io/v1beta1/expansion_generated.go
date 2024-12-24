@@ -13,6 +13,10 @@ type ClusterAgentListerExpansion interface{}
 // HostEndpointLister.
 type HostEndpointListerExpansion interface{}
 
+// HostOperationListerExpansion allows custom methods to be added to
+// HostOperationLister.
+type HostOperationListerExpansion interface{}
+
 // HostStatusListerExpansion allows custom methods to be added to
 // HostStatusLister.
 type HostStatusListerExpansion interface{}

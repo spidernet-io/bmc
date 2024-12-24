@@ -58,9 +58,10 @@ func (c *redfishClient) GetInfo() (map[string]string, error) {
 		return nil, fmt.Errorf("failed to get bmc")
 	}
 	c.logger.Debugf("bmc amount: %d", len(managers))
-	for n, t := range managers {
-		c.logger.Debugf("bmc[%d]: %+v", n, *t)
-	}
+	// for n, t := range managers {
+	// 	c.logger.Debugf("bmc[%d]: %+v", n, *t)
+	// }
+
 	bmc := managers[0]
 	// bmc info
 	setData(result, "BmcFirmwareVersion", bmc.FirmwareVersion)
@@ -76,9 +77,10 @@ func (c *redfishClient) GetInfo() (map[string]string, error) {
 		return nil, fmt.Errorf("failed to get system")
 	}
 	c.logger.Debugf("system amount: %d", len(ss))
-	for n, t := range ss {
-		c.logger.Debugf("systems[%d]: %+v", n, *t)
-	}
+	// for n, t := range ss {
+	// 	c.logger.Debugf("systems[%d]: %+v", n, *t)
+	// }
+
 	// for barel metal case,
 	system := ss[0]
 	// basic info
@@ -206,7 +208,7 @@ func (c *redfishClient) GetInfo() (map[string]string, error) {
 
 	LOOP_PCIEDEVICE:
 		for m, item := range pcieList {
-			c.logger.Debugf("PCIeDevices[%d]: %+v", m, item)
+			// c.logger.Debugf("PCIeDevices[%d]: %+v", m, item)
 
 			switch strings.ToLower(item.Description) {
 			case "GPU Device":

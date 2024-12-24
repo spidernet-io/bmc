@@ -9,4 +9,6 @@ type ClusterAgentExpansion interface{}
 
 type HostEndpointExpansion interface{}
 
+type HostOperationExpansion interface{}
+
 type HostStatusExpansion interface{}

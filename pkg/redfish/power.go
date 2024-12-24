@@ -3,6 +3,7 @@ package redfish
 import (
 	"fmt"
 
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/redfish"
 )
@@ -10,10 +11,10 @@ import (
 type BootCmd string
 
 const (
-	BootCmdOn           BootCmd = "on"
-	BootCmdOff          BootCmd = "off"
-	BootCmdReset        BootCmd = "reset"
-	BootCmdResetPxeOnce BootCmd = "resetPxeOnce"
+	BootCmdOn           BootCmd = bmcv1beta1.HostOperationActionPowerOn
+	BootCmdOff          BootCmd = bmcv1beta1.HostOperationActionPowerOff
+	BootCmdReset        BootCmd = bmcv1beta1.HostOperationActionReboot
+	BootCmdResetPxeOnce BootCmd = bmcv1beta1.HostOperationActionPxeReboot
 )
 
 // https://github.com/stmcginnis/gofish/blob/main/examples/reboot.md
@@ -46,7 +47,7 @@ const (
   "Oem": {}
 }
 */
-func (c *redfishClient) Reboot(bootCmd BootCmd) error {
+func (c *redfishClient) Power(bootCmd BootCmd) error {
 
 	// 创建 gofish 客户端
 	client, err := gofish.Connect(c.config)
@@ -77,18 +78,20 @@ func (c *redfishClient) Reboot(bootCmd BootCmd) error {
 
 		switch bootCmd {
 		case BootCmdOn:
+			c.logger.Infof("force on %s for System: %+v \n", c.config.Endpoint, system.Name)
 			err = system.Reset(redfish.ForceOnResetType)
 		case BootCmdOff:
+			c.logger.Infof("force off %s for System: %+v \n", c.config.Endpoint, system.Name)
 			err = system.Reset(redfish.ForceOffResetType)
 		case BootCmdReset:
 			if bootCmd == BootCmdResetPxeOnce {
-				c.logger.Debugf("pxe reboot for System: %+v \n", system)
+				c.logger.Infof("pxe reboot %s for System: %+v \n", c.config.Endpoint, system.Name)
 				err := system.SetBoot(bootOverride)
 				if err != nil {
 					return fmt.Errorf("failed to set boot option")
 				}
 			} else {
-				c.logger.Debugf("normal reboot for System: %+v \n", system)
+				c.logger.Infof("normal reboot %s for System: %+v \n", c.config.Endpoint, system.Name)
 			}
 			err = system.Reset(redfish.ForceRestartResetType)
 		}

@@ -27,6 +27,8 @@ const (
 	KindHostStatus = "HostStatus"
 	// KindClusterAgent is the kind name for ClusterAgent resource
 	KindClusterAgent = "ClusterAgent"
+	// KindHostOperation is the kind name for HostOperation resource
+	KindHostOperation = "HostOperation"
 )
 
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
@@ -55,4 +57,5 @@ func init() {
 	SchemeBuilder.Register(&ClusterAgent{}, &ClusterAgentList{})
 	SchemeBuilder.Register(&HostEndpoint{}, &HostEndpointList{})
 	SchemeBuilder.Register(&HostStatus{}, &HostStatusList{})
+	SchemeBuilder.Register(&HostOperation{}, &HostOperationList{})
 }

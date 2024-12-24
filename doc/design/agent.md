@@ -232,4 +232,29 @@ redfish 通信库可使用 golang 库  https://pkg.go.dev/github.com/stmcginnis/
 它向 使用 gofish 库，调用 ServiceRoot 方法 
 
 
+##  hostOperation CRD 
+
+我需要实现一个 新的 CRD  ， 它用于实现 对 host 的 运维操作
+
+其中 ，controller 组件会监听 该 CRD 对象，实现进行 validate and mutating 校验
+controller 组件可在 @pkg/webhook/hostoperation 下 实现相关的 webhook， 在 @cmd/controller 中集成相关的逻辑
+
+
+```
+apiVersion: bmc.spidernet.io/v1beta1
+kind: hostOperation
+metadata:
+  name: power-off
+spec:
+  action: "powerOff"|"powerOn"|"reboot"|"pxeReboot"  // 必填
+  hostStatusName: "test"  // 必填， controller 组件确认，该名字 对应的 hostStatus crd 实例要存在，且其 status.healthy 要求为 true
+status:
+  status: "pending"|"success"|"failure"  // 对象创建后，默认初始是 pending 状态
+  message: "xxxx"
+  lastUpdateTime: "2024-12-19T07:14:33Z"
+  clusterAgent: default-agent  //对象创建后，controller 组件的 mutating webhook ， 根据 spec.hostStatusName ，寻找对应的 hostStatus crd 实例 ， 把其中的 status.clusterAgent 赋值给 它
+```
+
+请在 @pkg/k8s/apis/bmc.spidernet.io/v1beta1 中创建 crd 定义后， 可使用 make update_crd_sdk  来生成 配套的 client sdk，位于 @pkg/k8s/client 下 ， 相关的 deep copy 函数，也会生成在 @pkg/k8s/apis ， 相关的 crd 定义 生成在 @chart/crds 下
+
 
