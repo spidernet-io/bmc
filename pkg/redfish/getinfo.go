@@ -54,8 +54,15 @@ func (c *redfishClient) GetInfo() error {
 	c.logger.Debugf("Manufacturer: %v", system.Manufacturer)
 	c.logger.Debugf("MemoryGiB: %v", system.MemorySummary.TotalSystemMemoryGiB)
 	c.logger.Debugf("CpuPhysicalCore: %v", system.ProcessorSummary.Count)
+	// optional
+	c.logger.Debugf("CpuLogicalCore: %v", system.ProcessorSummary.LogicalProcessorCount)
 	c.logger.Debugf("PowerState: %v", system.PowerState)
 	c.logger.Debugf("Status: %v", system.Status.Health)
+	// optional: in old redfish version, the following fields are missing
+	pcieList, err := system.PCIeDevices()
+	if err == nil && len(pcieList) > 0 {
+		c.logger.Debugf("PCIeDevices: %v", pcieList)
+	}
 
 	// Query the managers for bmc
 	managers, err := service.Managers()

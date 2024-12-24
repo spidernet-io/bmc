@@ -23,25 +23,21 @@ type HostStatus struct {
 }
 
 type HostStatusStatus struct {
-	HealthReady    bool      `json:"healthReady"`
-	ClusterAgent   string    `json:"clusterAgent"`
-	LastUpdateTime string    `json:"lastUpdateTime"`
-	Basic          BasicInfo `json:"basic"`
-	Info           Info      `json:"info"`
+	HealthReady    bool              `json:"healthReady"`
+	ClusterAgent   string            `json:"clusterAgent"`
+	LastUpdateTime string            `json:"lastUpdateTime"`
+	Basic          BasicInfo         `json:"basic"`
+	Info           map[string]string `json:"info"`
 }
 
 type BasicInfo struct {
-	Type             string `json:"type"`
-	IpAddr           string `json:"ipAddr"`
-	SecretName       string `json:"secretName,omitempty"`
-	SecretNamespace  string `json:"secretNamespace,omitempty"`
-	Https            bool   `json:"https"`
-	Port             int32  `json:"port"`
-	Mac              string `json:"mac,omitempty"`
-}
-
-type Info struct {
-	OS string `json:"os,omitempty"`
+	Type            string `json:"type"`
+	IpAddr          string `json:"ipAddr"`
+	SecretName      string `json:"secretName,omitempty"`
+	SecretNamespace string `json:"secretNamespace,omitempty"`
+	Https           bool   `json:"https"`
+	Port            int32  `json:"port"`
+	Mac             string `json:"mac,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -81,9 +81,8 @@ spec:
               healthReady:
                 type: boolean
               info:
-                properties:
-                  os:
-                    type: string
+                additionalProperties:
+                  type: string
                 type: object
               lastUpdateTime:
                 type: string
