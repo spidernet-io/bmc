@@ -43,7 +43,22 @@ func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error 
 	// 检查健康状态
 	healthy := client.Health()
 	updated.Status.HealthReady = healthy
-	client.GetInfo()
+	if healthy {
+		infoData, err := client.GetInfo()
+		if err != nil {
+			log.Logger.Errorf("Failed to get info of HostStatus %s: %v", name, err)
+			healthy = false
+		} else {
+			updated.Status.Info = infoData
+		}
+	}
+	if !healthy {
+		log.Logger.Debugf("HostStatus %s is not healthy, set info to empty", name)
+		updated.Status.Info = map[string]string{}
+	}
+	if updated.Status.HealthReady != existing.Status.HealthReady {
+		log.Logger.Infof("HostStatus %s change from %v to %v , update status", name, existing.Status.HealthReady, healthy)
+	}
 
 	// 更新 HostStatus
 	if !reflect.DeepEqual(updated.Status, existing.Status) {

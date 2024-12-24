@@ -14,7 +14,7 @@ type RefishClient interface {
 	// Health 检查 Redfish 服务的健康状态
 	Health() bool
 	Reboot(BootCmd) error
-	GetInfo() error
+	GetInfo() (map[string]string, error)
 }
 
 // redfishClient 实现了 Client 接口
