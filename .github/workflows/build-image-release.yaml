@@ -11,7 +11,7 @@ permissions: write-all
 
 jobs:
   call-workflow:
-    uses: ./.github/workflows/call-release-image.yaml
+    uses: ./.github/workflows/call-build-image.yaml
     with:
       ref: ${{ inputs.ref }}
       push: "true"
