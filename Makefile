@@ -1,21 +1,6 @@
 # Include common definitions
 include Makefile.def
 
-# Version and image registry configuration
-VERSION ?= $(shell git rev-parse --short HEAD)
-REGISTRY ?= ghcr.io/spidernet-io
-IMAGE_NAMESPACE ?= bmc
-TOOLS_IMAGE_NAME ?= tools
-TOOLS_IMAGE_TAG ?= latest
-
-# Go build configuration
-GOOS ?= linux
-GOARCH ?= amd64
-CGO_ENABLED ?= 0
-
-# Output directory
-BIN_DIR := bin
-
 # Default target
 .PHONY: all
 all: images
@@ -26,11 +11,11 @@ build-binaries: build-controller build-agent
 
 .PHONY: build-controller
 build-controller:
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(BIN_DIR)/controller cmd/controller/main.go
+	$(GO_BUILD) -o $(BIN_DIR)/controller cmd/controller/main.go
 
 .PHONY: build-agent
 build-agent:
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(BIN_DIR)/agent cmd/agent/main.go
+	$(GO_BUILD) -o $(BIN_DIR)/agent cmd/agent/main.go
 
 # Image targets
 .PHONY: images
@@ -52,10 +37,81 @@ build-tools-image:
 	docker build -t $(TOOLS_IMAGE_REF) -f image/tools/Dockerfile image/tools
 
 # Helm chart
-.PHONY: chart
-chart:
-	helm package chart/
+#================== chart
+ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+CHART_DIR := $(ROOT_DIR)/chart
+DESTDIR_CHART ?= $(ROOT_DIR)/output/chart
 
+.PHONY: chart_package
+chart_package: lint_chart_format lint_chart_version
+	-@rm -rf $(DESTDIR_CHART)
+	-@mkdir -p $(DESTDIR_CHART)
+	cd $(DESTDIR_CHART) ; \
+   		echo "package chart " ; \
+   		helm package  $(CHART_DIR) ; \
+
+
+.PHONY: update_chart_version
+update_chart_version:
+	VERSION=`cat VERSION | tr -d '\n' ` ; [ -n "$${VERSION}" ] || { echo "error, wrong version" ; exit 1 ; } ; \
+		echo "update chart version to $${VERSION}" ; \
+		CHART_VERSION=`echo $${VERSION} | tr -d 'v' ` ; \
+		sed -E -i 's?^version: .*?version: '$${CHART_VERSION}'?g' $(CHART_DIR)/Chart.yaml &>/dev/null  ; \
+		sed -E -i 's?^appVersion: .*?appVersion: "'$${CHART_VERSION}'"?g' $(CHART_DIR)/Chart.yaml &>/dev/null  ; \
+   		echo "version of all chart is right"
+
+
+.PHONY: lint_chart_format
+lint_chart_format:
+	mkdir -p $(DESTDIR_CHART) ; \
+   			echo "check chart" ; \
+   			helm lint --with-subcharts $(CHART_DIR)
+
+
+.PHONY: lint_chart_version
+lint_chart_version:
+	VERSION=`cat VERSION | tr -d '\n' ` ; [ -n "$${VERSION}" ] || { echo "error, wrong version" ; exit 1 ; } ; \
+		echo "check chart version $${VERSION}" ; \
+		CHART_VERSION=`echo $${VERSION} | tr -d 'v' ` ; \
+			grep -E "^version: $${CHART_VERSION}" $(CHART_DIR)/Chart.yaml &>/dev/null || { echo "error, wrong version in Chart.yaml" ; exit 1 ; } ; \
+			grep -E "^appVersion: \"$${CHART_VERSION}\"" $(CHART_DIR)/Chart.yaml &>/dev/null || { echo "error, wrong appVersion in Chart.yaml" ; exit 1 ; } ; \
+   		echo "version of all chart is right"
+
+
+#================= update golang
+
+GO_VERSION := $(shell cat GO_VERSION | tr -d '\n' )
+GO_IMAGE_VERSION := $(shell awk -F. '{ z=$$3; if (z == "") z=0; print $$1 "." $$2 "." z}' <<< "${GO_VERSION}" )
+GO_MAJOR_AND_MINOR_VERSION := $(shell  grep  -o -E '^[0-9]+\.[0-9]+'  <<< "${GO_VERSION}" )
+
+
+## Update Go version for all the components
+.PHONY: update_go_version
+update_go_version: update_images_dockerfile_golang update_mod_golang update_workflow_golang
+
+
+.PHONY: update_images_dockerfile_golang
+update_images_dockerfile_golang:
+	GO_VERSION=$(GO_VERSION) $(ROOT_DIR)/tools/scripts/update-golang-image.sh
+
+
+# Update Go version for GitHub workflow
+.PHONY: update_workflow_golang
+update_workflow_golang:
+	$(QUIET) for fl in $(shell find .github/workflows -name "*.yaml" -print) ; do \
+  			sed -i 's/go-version: .*/go-version: ${GO_IMAGE_VERSION}/g' $$fl ; \
+  			done
+	@echo "Updated go version in GitHub Actions to $(GO_IMAGE_VERSION)"
+
+
+# Update Go version in go.mod
+.PHONY: update_mod_golang
+update_mod_golang:
+	$(QUIET) sed -i -E 's/^go .*/go '$(GO_MAJOR_AND_MINOR_VERSION)'/g' go.mod
+	@echo "Updated go version in go.mod to $(GO_VERSION)"
+
+
+#-------------------------------------------
 # E2E tests
 .PHONY: e2e e2e-clean uninstall_e2e
 

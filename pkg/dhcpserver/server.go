@@ -8,12 +8,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"time"
 
 	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
+	"github.com/spidernet-io/bmc/pkg/lock"
 	"github.com/spidernet-io/bmc/pkg/log"
 )
 
@@ -34,7 +34,7 @@ type dhcpServer struct {
 	// cmd represents the running DHCP server process
 	cmd *exec.Cmd
 	// mutex protects access to shared resources
-	mutex sync.Mutex
+	mutex lock.Mutex
 	// stopChan signals the monitoring routine to stop
 	stopChan chan struct{}
 	// stats holds current IP usage statistics

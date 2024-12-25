@@ -1,9 +1,8 @@
 package data
 
 import (
-	"sync"
-
 	"github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
+	"github.com/spidernet-io/bmc/pkg/lock"
 )
 
 // HostConnectCon 定义主机数据结构
@@ -15,7 +14,7 @@ type HostConnectCon struct {
 
 // HostCache 定义主机缓存结构
 type HostCache struct {
-	lock sync.RWMutex
+	lock lock.RWMutex
 	data map[string]HostConnectCon
 }
 

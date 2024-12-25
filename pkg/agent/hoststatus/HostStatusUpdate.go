@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
+	"github.com/spidernet-io/bmc/pkg/lock"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"github.com/spidernet-io/bmc/pkg/redfish"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var hostStatusLock sync.RWMutex
+var hostStatusLock lock.RWMutex
 
 func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error {
 
@@ -95,12 +95,11 @@ func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 		}
 	}
 
-	hostStatusLock.Lock()
-	defer hostStatusLock.Unlock()
-
 	for name, t := range syncData {
+		hostStatusLock.Lock()
 		log.Logger.Debugf("update status of the hostStatus %s ", name)
 		c.UpdateHostStatusCr(&t)
+		hostStatusLock.Unlock()
 	}
 
 	return nil

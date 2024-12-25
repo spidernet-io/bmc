@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.23.1 as builder
+FROM docker.io/library/golang:1.23.1 as builder
 
 # Copy the entire project
 WORKDIR /workspace
@@ -13,6 +13,13 @@ RUN make build-agent
 
 # Final stage
 FROM ubuntu:24.10
+
+ARG GIT_COMMIT_VERSION
+ENV ENV_GIT_COMMIT_VERSION=${GIT_COMMIT_VERSION}
+ARG GIT_COMMIT_TIME
+ENV ENV_GIT_COMMIT_TIMESTAMP=${GIT_COMMIT_TIME}
+ARG PROJECT_VERSION
+ENV ENV_PROJECT_VERSION=${PROJECT_VERSION}
 
 # Install dhcpd binary
 RUN apt-get update && \
