@@ -3,7 +3,7 @@ package template
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"text/template"
 
@@ -30,7 +30,7 @@ func NewManager(templateDir string) *Manager {
 // RenderYAML renders a YAML template with the given data
 func (m *Manager) RenderYAML(templateName string, data map[string]interface{}) (*unstructured.Unstructured, error) {
 	templatePath := filepath.Join(m.templateDir, templateName)
-	content, err := ioutil.ReadFile(templatePath)
+	content, err := os.ReadFile(templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template %s: %v", templatePath, err)
 	}

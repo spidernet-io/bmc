@@ -3,7 +3,6 @@ package template
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,7 +52,7 @@ func RenderTemplate(templateName string, data *TemplateData) (*unstructured.Unst
 	log.Logger.Infof("Starting template rendering: %s", templateName)
 
 	templatePath := filepath.Join("/etc/bmc/templates", templateName)
-	templateContent, err := ioutil.ReadFile(templatePath)
+	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
 		log.Logger.Errorf("Failed to read template file %s: %v", templatePath, err)
 		return nil, fmt.Errorf("failed to read template file %s: %v", templatePath, err)
