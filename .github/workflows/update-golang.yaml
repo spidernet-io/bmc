@@ -17,6 +17,7 @@ jobs:
 
       - name: update golang version
         run: |
+          cat /etc/os-release
           latest_version=$(curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n 1 | grep -oP '[0-9]+\.[0-9]+\.[0-9]+')
           echo "latest_version: $latest_version"
           project_version=$(cat GO_VERSION | grep -oP '[0-9]+\.[0-9]+\.[0-9]+')
