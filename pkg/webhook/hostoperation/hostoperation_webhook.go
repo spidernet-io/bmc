@@ -57,12 +57,6 @@ func (h *HostOperationWebhook) ValidateCreate(ctx context.Context, obj runtime.O
 
 	log.Logger.Debugf("Processing ValidateCreate webhook for HostOperation %s", hostOp.Name)
 
-	if hostOp.Spec.Action != bmcv1beta1.HostOperationActionReboot && hostOp.Spec.Action != bmcv1beta1.HostOperationActionPowerOff && hostOp.Spec.Action != bmcv1beta1.HostOperationActionPowerOn && hostOp.Spec.Action != bmcv1beta1.HostOperationActionPxeReboot {
-		err := fmt.Errorf("invalid action %s", hostOp.Spec.Action)
-		log.Logger.Errorf(err.Error())
-		return nil, err
-	}
-
 	// 验证 hostStatusName 对应的 HostStatus 是否存在且健康
 	var hostStatus bmcv1beta1.HostStatus
 	if err := h.Client.Get(ctx, client.ObjectKey{Name: hostOp.Spec.HostStatusName}, &hostStatus); err != nil {

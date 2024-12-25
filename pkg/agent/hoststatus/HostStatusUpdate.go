@@ -18,7 +18,7 @@ var hostStatusLock sync.RWMutex
 func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error {
 
 	// 创建 redfish 客户端
-	client := redfish.NewClient(*d)
+	client := redfish.NewClient(*d, log.Logger)
 
 	protocol := "http"
 	if d.Info.Https {

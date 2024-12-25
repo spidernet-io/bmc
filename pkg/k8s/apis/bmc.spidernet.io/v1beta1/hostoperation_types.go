@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"github.com/stmcginnis/gofish/redfish"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -11,10 +12,22 @@ const (
 )
 
 const (
-	HostOperationActionReboot    = "reboot"
-	HostOperationActionPowerOff  = "powerOff"
-	HostOperationActionPowerOn   = "powerOn"
-	HostOperationActionPxeReboot = "pxeReboot"
+	// operation action
+	// power
+	// "On"
+	BootCmdOn = string(redfish.OnResetType)
+	// "ForceOn"
+	BootCmdForceOn = string(redfish.ForceOnResetType)
+	// "ForceOff"
+	BootCmdForceOff = string(redfish.ForceOffResetType)
+	// "GracefulShutdown"
+	BootCmdGracefulShutdown = string(redfish.GracefulShutdownResetType)
+	// "ForceRestart"
+	BootCmdForceRestart = string(redfish.ForceRestartResetType)
+	// "GracefulRestart"
+	BootCmdGracefulRestart = string(redfish.GracefulRestartResetType)
+	// "PxeReboot"
+	BootCmdResetPxeOnce string = "PxeReboot"
 )
 
 // +genclient
@@ -36,7 +49,7 @@ type HostOperation struct {
 }
 
 type HostOperationSpec struct {
-	// +kubebuilder:validation:Enum=powerOff;powerOn;reboot;pxeReboot
+	// +kubebuilder:validation:Enum=ForceOn;On;ForceOff;GracefulShutdown;ForceRestart;GracefulRestart;PxeReboot
 	// +kubebuilder:validation:Required
 	Action string `json:"action"`
 

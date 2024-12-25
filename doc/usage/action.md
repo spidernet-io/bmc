@@ -4,14 +4,17 @@
 
 ## 支持的操作类型
 
-HostOperation CRD 支持以下四种操作类型：
+HostOperation CRD 支持以下操作类型：
 
 | Action | 描述 | 使用场景 |
 |--------|------|----------|
-| powerOff | 关闭物理机电源 | 需要维护物理机或节能时 |
-| powerOn | 开启物理机电源 | 物理机关机状态下，需要启动时 |
-| reboot | 重启物理机 | 物理机系统异常需要重启，或更新系统后需要重启时 |
-| pxeReboot | 通过 PXE 方式重启物理机，它是 once PXE 重启效果 | 需要重新安装操作系统，或进行 PXE 引导时 |
+| On | 正常开机 | 物理机关机状态下，需要启动时 |
+| ForceOn | 强制开机 | 物理机可能处于异常关机状态时 |
+| ForceOff | 强制关机，强制操作会立即执行，可能导致数据丢失 | 物理机无法正常关机时 |
+| GracefulShutdown | 优雅关机，优雅操作会等待操作系统完成清理工作 | 正常关闭物理机，等待操作系统完成清理 |
+| ForceRestart | 强制重启，强制操作会立即执行，可能导致数据丢失 | 物理机系统无响应需要强制重启时 |
+| GracefulRestart | 优雅重启，优雅操作会等待操作系统完成清理工作 | 正常重启物理机，等待操作系统完成清理 |
+| PxeReboot | PXE 重启，PXE 重启是实现 once 重启，即重启后。需要管理员在带内网络内手动部署 PXE 服务，本组件并不自动部署 PXE 服务 | 需要通过 PXE 引导安装系统时 |
 
 ## 操作流程
 
@@ -32,47 +35,47 @@ kubectl get hoststatus
 
 以下是不同操作类型的 YAML 示例：
 
-关闭物理机电源：
+正常开机：
 ```yaml
 apiVersion: bmc.spidernet.io/v1beta1
 kind: HostOperation
 metadata:
-  name: host-1-poweroff
+  name: host-1-on
 spec:
-  action: powerOff
+  action: On
   hostStatusName: host-1
 ```
 
-开启物理机电源：
+强制关机：
 ```yaml
 apiVersion: bmc.spidernet.io/v1beta1
 kind: HostOperation
 metadata:
-  name: host-1-poweron
+  name: host-1-forceoff
 spec:
-  action: powerOn
+  action: ForceOff
   hostStatusName: host-1
 ```
 
-重启物理机：
+优雅重启：
 ```yaml
 apiVersion: bmc.spidernet.io/v1beta1
 kind: HostOperation
 metadata:
-  name: host-1-reboot
+  name: host-1-gracefulrestart
 spec:
-  action: reboot
+  action: GracefulRestart
   hostStatusName: host-1
 ```
 
-PXE 重启物理机：
+PXE 重启：
 ```yaml
 apiVersion: bmc.spidernet.io/v1beta1
 kind: HostOperation
 metadata:
   name: host-1-pxereboot
 spec:
-  action: pxeReboot
+  action: PxeReboot
   hostStatusName: host-1
 ```
 
@@ -86,9 +89,9 @@ cat <<EOF | kubectl create -f -
 apiVersion: bmc.spidernet.io/v1beta1
 kind: HostOperation
 metadata:
-  name: host-1-poweroff
+  name: host-1-gracefulshutdown
 spec:
-  action: powerOff
+  action: GracefulShutdown
   hostStatusName: host-1
 EOF
 ```
@@ -99,10 +102,10 @@ EOF
 kubectl get hostoperation
 
 # 查看特定操作的详细信息
-kubectl get hostoperation host-1-poweroff -o yaml
+kubectl get hostoperation host-1-gracefulshutdown -o yaml
 
 # 监控操作状态变化
-kubectl get hostoperation host-1-poweroff -w
+kubectl get hostoperation host-1-gracefulshutdown -w
 ```
 
 ### 状态说明
@@ -127,7 +130,6 @@ kubectl get hostoperation host-1-poweroff -w
    - 查看 `status.message` 了解失败原因
    - 检查物理机状态和网络连接
    - 确保 BMC 接口可访问
-5. 对于 PXE 重启，它是实现 once 重启，即重启后。需要管理员在带内网络内手动部署 PXE 服务，本组件并不自动部署 PXE 服务
 
 ### 最佳实践
 
@@ -140,9 +142,14 @@ kubectl get hostoperation host-1-poweroff -w
    - 使用小写字母
    - 使用有意义的前缀
    - 包含操作类型信息
-   - 示例：`host-1-poweroff`、`host-2-pxereboot`
+   - 示例：`host-1-gracefulshutdown`、`host-2-pxereboot`
 
 3. 批量操作时：
    - 建议分批执行
    - 每批之间留有观察时间
    - 确保有回滚方案
+
+4. 操作选择建议：
+   - 优先使用优雅操作（GracefulShutdown/GracefulRestart）
+   - 仅在必要时使用强制操作（ForceOff/ForceRestart）
+   - 确保了解每种操作的影响

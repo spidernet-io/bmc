@@ -52,10 +52,13 @@ spec:
             properties:
               action:
                 enum:
-                - powerOff
-                - powerOn
-                - reboot
-                - pxeReboot
+                - ForceOn
+                - "On"
+                - ForceOff
+                - GracefulShutdown
+                - ForceRestart
+                - GracefulRestart
+                - PxeReboot
                 type: string
               hostStatusName:
                 type: string
