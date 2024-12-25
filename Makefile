@@ -82,7 +82,7 @@ lint_chart_version:
 
 GO_VERSION := $(shell cat GO_VERSION | tr -d '\n' )
 GO_IMAGE_VERSION = $(shell echo ${GO_VERSION} | awk -F. '{ z=$$3; if (z == "") z=0; print $$1 "." $$2 "." z}' )
-GO_MAJOR_AND_MINOR_VERSION = $(shell  echo "${GO_VERSION}" | grep  -o -E '^[0-9]+\.[0-9]+' )
+#GO_MAJOR_AND_MINOR_VERSION = $(shell  echo "${GO_VERSION}" | grep  -o -E '^[0-9]+\.[0-9]+' )
 
 
 ## Update Go version for all the components
@@ -102,12 +102,11 @@ update_workflow_golang:
   			sed -i 's/go-version: .*/go-version: '${GO_IMAGE_VERSION}'/g' $$fl ; \
   			done
 
-
 # Update Go version in go.mod
 .PHONY: update_mod_golang
 update_mod_golang:
-		echo "update go.mod to ${GO_MAJOR_AND_MINOR_VERSION}" ; \
-		sed -i -E 's/^go .*/go '"${GO_MAJOR_AND_MINOR_VERSION}"'/g' go.mod
+		echo "update go.mod to ${GO_VERSION}" ; \
+		sed -i -E 's/^go .*/go '"${GO_VERSION}"'/g' go.mod
 
 
 #-------------------------------------------
