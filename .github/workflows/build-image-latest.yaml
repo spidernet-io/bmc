@@ -20,5 +20,4 @@ jobs:
       tagoverride: 'latest'
       push: "true"
       upload: "false"
-      race: "0"
     secrets: inherit
