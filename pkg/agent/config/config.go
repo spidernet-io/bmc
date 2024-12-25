@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spidernet-io/bmc/pkg/log"
@@ -19,10 +20,15 @@ import (
 
 // AgentConfig represents the agent configuration
 type AgentConfig struct {
+	// 集群代理名称
 	ClusterAgentName string
 	AgentObjSpec     bmcv1beta1.ClusterAgentSpec
-	Username         string
-	Password         string
+	// redfish 连接的缺省用户名
+	Username string
+	// redfish 连接的缺省密码
+	Password string
+	// 主机状态更新间隔（秒）
+	HostStatusUpdateInterval int
 }
 
 // ValidateEndpointConfig validates the endpoint configuration
@@ -153,15 +159,33 @@ func (c *AgentConfig) GetDetailString() string {
 		details.WriteString(fmt.Sprintf("    EnableGuiProxy: %v\n", c.AgentObjSpec.Feature.EnableGuiProxy))
 	}
 
+	// Add HostStatusUpdateInterval to details
+	details.WriteString(fmt.Sprintf("  HostStatusUpdateInterval: %d seconds\n", c.HostStatusUpdateInterval))
+
 	return details.String()
 }
 
 // LoadAgentConfig loads the agent configuration from environment and ClusterAgent instance
+// environment variable:
+// CLUSTERAGENT_NAME: the name of the ClusterAgent
+// HOST_STATUS_UPDATE_INTERVAL: the interval of updating host status, default is 60 seconds
 func LoadAgentConfig(k8sClient *kubernetes.Clientset) (*AgentConfig, error) {
 	// Get agent name from environment
 	agentName := os.Getenv("CLUSTERAGENT_NAME")
 	if agentName == "" {
 		return nil, fmt.Errorf("CLUSTERAGENT_NAME environment variable not set")
+	}
+
+	updateInterval := 60 // 默认 60 秒
+	intervalStr := os.Getenv("HOST_STATUS_UPDATE_INTERVAL")
+	if intervalStr == "" {
+		return nil, fmt.Errorf("HOST_STATUS_UPDATE_INTERVAL environment variable is not set, using default: %d", updateInterval)
+	} else {
+		if interval, err := strconv.Atoi(intervalStr); err == nil {
+			updateInterval = interval
+		} else {
+			return nil, fmt.Errorf("HOST_STATUS_UPDATE_INTERVAL environment variable %s is not a valid integer: %v", intervalStr, err)
+		}
 	}
 
 	// Create bmc client config
@@ -196,8 +220,9 @@ func LoadAgentConfig(k8sClient *kubernetes.Clientset) (*AgentConfig, error) {
 
 	// Create agent config
 	agentConfig := &AgentConfig{
-		ClusterAgentName: agentName,
-		AgentObjSpec:     clusterAgent.Spec,
+		ClusterAgentName:         agentName,
+		AgentObjSpec:             clusterAgent.Spec,
+		HostStatusUpdateInterval: updateInterval,
 	}
 
 	// Validate endpoint configuration

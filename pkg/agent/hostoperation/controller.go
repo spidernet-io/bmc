@@ -85,14 +85,20 @@ func (r *HostOperationController) Reconcile(ctx context.Context, req ctrl.Reques
 
 		var err error
 		switch hostOp.Spec.Action {
-		case bmcv1beta1.HostOperationActionReboot:
-			err = redfish.NewClient(*d).Power(redfish.BootCmdReset)
-		case bmcv1beta1.HostOperationActionPowerOff:
-			err = redfish.NewClient(*d).Power(redfish.BootCmdOff)
-		case bmcv1beta1.HostOperationActionPowerOn:
-			err = redfish.NewClient(*d).Power(redfish.BootCmdOn)
-		case bmcv1beta1.HostOperationActionPxeReboot:
-			err = redfish.NewClient(*d).Power(redfish.BootCmdResetPxeOnce)
+		case bmcv1beta1.BootCmdOn:
+			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
+		case bmcv1beta1.BootCmdForceOn:
+			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
+		case bmcv1beta1.BootCmdForceOff:
+			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
+		case bmcv1beta1.BootCmdGracefulShutdown:
+			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
+		case bmcv1beta1.BootCmdForceRestart:
+			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
+		case bmcv1beta1.BootCmdGracefulRestart:
+			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
+		case bmcv1beta1.BootCmdResetPxeOnce:
+			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
 		default:
 			err = fmt.Errorf("invalid action %s", hostOp.Spec.Action)
 		}

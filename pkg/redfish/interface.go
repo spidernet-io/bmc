@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
-	"github.com/spidernet-io/bmc/pkg/log"
 	"github.com/stmcginnis/gofish"
 	"go.uber.org/zap"
 )
@@ -13,7 +12,7 @@ import (
 type RefishClient interface {
 	// Health 检查 Redfish 服务的健康状态
 	Health() bool
-	Power(BootCmd) error
+	Power(string) error
 	GetInfo() (map[string]string, error)
 }
 
@@ -26,7 +25,7 @@ type redfishClient struct {
 var _ RefishClient = (*redfishClient)(nil)
 
 // NewClient 创建一个新的 Redfish 客户端
-func NewClient(hostCon data.HostConnectCon) RefishClient {
+func NewClient(hostCon data.HostConnectCon, log *zap.SugaredLogger) RefishClient {
 
 	url := buildEndpoint(hostCon)
 	config := gofish.ClientConfig{
@@ -37,11 +36,10 @@ func NewClient(hostCon data.HostConnectCon) RefishClient {
 	}
 	return &redfishClient{
 		config: config,
-		logger: log.Logger.Named("redfish").With(
+		logger: log.Named("redfish").With(
 			zap.String("endpoint", url),
 		),
 	}
-
 }
 
 // buildEndpoint 根据 HostConnectCon 构建 Redfish 服务的端点 URL

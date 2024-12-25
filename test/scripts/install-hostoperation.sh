@@ -15,16 +15,16 @@ echo "action: $action"
 
 [ -n "${action}" ] || {
     echo "error: Action is required"
-    echo "Valid actions: powerOff, powerOn, reboot, pxeReboot"
+    echo "Valid actions: On, ForceOn, ForceOff, GracefulShutdown, ForceRestart, GracefulRestart, PxeReboot"
     exit 1
 }
 
 case "${action}" in
-    "powerOff"|"powerOn"|"reboot"|"pxeReboot")
+    "On"|"ForceOn"|"ForceOff"|"GracefulShutdown"|"ForceRestart"|"GracefulRestart"|"PxeReboot")
         ;;
     *)
         echo "error: Invalid action ${action}"
-        echo "Valid actions: powerOff, powerOn, reboot, pxeReboot"
+        echo "Valid actions: On, ForceOn, ForceOff, GracefulShutdown, ForceRestart, GracefulRestart, PxeReboot"
         exit 1
         ;;
 esac
@@ -45,7 +45,7 @@ kind: HostOperation
 metadata:
   name: $( echo "${name}" | tr '[:upper:]' '[:lower:]')
 spec:
-  action: ${action}
+  action: "${action}"
   hostStatusName: ${hostStatusName}
 EOF
 
