@@ -97,11 +97,11 @@ update_images_dockerfile_golang:
 # Update Go version for GitHub workflow
 .PHONY: update_workflow_golang
 update_workflow_golang:
-	echo "update workflow golang to $(GO_IMAGE_VERSION)"
-	for fl in $(shell find .github/workflows -name "*.yaml" -print) ; do \
-  			sed -i 's/go-version: .*/go-version: $(GO_IMAGE_VERSION)/g' $$fl ; \
+	GO_IMAGE_VERSION=$$( awk -F. '{ z=$$3; if (z == "") z=0; print $$1 "." $$2 "." z}' <<< "$(GO_VERSION)" ) ; \
+		echo "update workflow golang to $${GO_IMAGE_VERSION}" ; \
+		for fl in $(shell find .github/workflows -name "*.yaml" -print) ; do \
+  			sed -i 's/go-version: .*/go-version: '$${GO_IMAGE_VERSION}'/g' $$fl ; \
   			done
-	@echo "Updated go version in GitHub Actions to $(GO_IMAGE_VERSION)"
 
 
 # Update Go version in go.mod
