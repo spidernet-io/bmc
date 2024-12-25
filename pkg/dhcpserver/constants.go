@@ -24,8 +24,4 @@ const (
 	// The monitor routine checks server health and updates statistics at this interval.
 	MonitorInterval = 2 // seconds
 
-	// EnvDhcpDebugLog is the environment variable name that controls whether dhcpd's
-	// output should be logged to stdout/stderr. When set to "true", all dhcpd output
-	// will be captured and logged through the BMC logging system.
-	//EnvDhcpDebugLog = "DHCP_DEBUG_LOG"
 )

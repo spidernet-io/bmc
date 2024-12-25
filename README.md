@@ -1,102 +1,110 @@
-# BMC Kubernetes Operator
+# BMC 管理系统
 
-A Kubernetes operator for managing BMC (Baseboard Management Controller) servers in a Kubernetes cluster.
+BMC (Baseboard Management Controller) 管理系统是一个基于 Kubernetes 的物理机带外管理解决方案。它通过 Redfish 协议与服务器的 BMC 进行通信，提供物理机的监控、管理和操作能力。
 
-## Features
+## 功能特性
 
-- Custom Resource Definition (CRD) for managing BMC servers
-- Automatic deployment of BMC server pods with network interface configuration
-- Helm-based installation and configuration
-- Support for multiple BMC server instances
-- Network interface configuration via CNI annotations
-- Cluster name configuration via environment variables
+- **自动发现**：支持通过 DHCP 自动发现和接入 BMC 设备
+- **多集群管理**：支持在多个 Kubernetes 集群中部署 Agent，实现分布式管理
+- **状态监控**：
+  - 自动采集并更新物理机状态信息
+  - 支持配置状态更新间隔
+  - 提供物理机健康状态检查
+- **电源管理**：
+  - 支持开机、关机、重启等基本操作
+  - 支持优雅关机和强制关机
+  - 支持 PXE 引导重启
+- **认证管理**：
+  - 支持统一的默认认证信息配置
+  - 支持针对单个设备的独立认证配置
+- **网络管理**：
+  - 支持 Host Network 模式部署
+  - 支持 Macvlan 模式部署，实现网络隔离
+  - 内置 DHCP 服务器，支持自动 IP 分配
 
-## Prerequisites
+## 系统架构
 
-- Kubernetes cluster (v1.16+)
-- Helm v3
-- kubectl configured to communicate with your cluster
+### 核心组件
 
-## Installation
+1. **BMC Operator**
+   - 负责管理整个系统的 CRD 资源
+   - 处理 Webhook 请求，确保资源创建的合法性
+   - 管理 Agent 的生命周期
 
-1. Add the Helm repository:
-```bash
-helm repo add bmc https://[your-helm-repo-url]
-helm repo update
-```
+2. **BMC Agent**
+   - 负责与物理机 BMC 的直接通信
+   - 维护物理机状态信息
+   - 执行物理机操作请求
+   - 提供可选的 DHCP 服务
 
-2. Install the operator:
-```bash
-helm install bmc-operator bmc/bmc-operator
-```
+### 自定义资源 (CRD)
 
-### Configuration
+1. **ClusterAgent**
+   - 代表一个 Agent 实例
+   - 包含 Agent 的配置信息
+   - 管理 Agent 的运行状态
 
-You can customize the installation by creating a `values.yaml` file:
+2. **HostStatus**
+   - 记录物理机的状态信息
+   - 包含 Redfish 获取的详细信息
+   - 展示物理机的健康状态
 
-```yaml
-operator:
-  replicas: 2
-  image:
-    repository: bmc/operator
-    tag: latest
+3. **HostEndpoint**
+   - 定义物理机的接入信息
+   - 配置 BMC 的连接参数
+   - 支持独立的认证配置
 
-server:
-  image:
-    repository: bmc/server
-    tag: latest
-```
+4. **HostOperation**
+   - 定义对物理机的操作请求
+   - 支持多种操作类型
+   - 记录操作的执行状态
 
-Then install with:
-```bash
-helm install -f values.yaml bmc-operator bmc/bmc-operator
-```
+### 部署模式
 
-## Usage
+1. **单集群模式**
+   ```
+   ┌─────────────────────────────────────┐
+   │           Kubernetes 集群            │
+   │                                     │
+   │ ┌─────────────┐    ┌─────────────┐ │
+   │ │             │    │             │ │
+   │ │   Operator  │    │    Agent    │ │
+   │ │             │    │             │ │
+   │ └─────────────┘    └─────────────┘ │
+   │                          ▲         │
+   └──────────────────────────┼─────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    │    BMC 设备集群    │
+                    │                   │
+                    └───────────────────┘
+   ```
 
-1. Create a BMC Server instance:
+2. **多集群模式**
+   ```
+   ┌─────────────────────────────────────┐
+   │           Kubernetes 集群            │
+   │                                     │
+   │ ┌─────────────┐    ┌─────────────┐ │
+   │ │             │    │   Agent-1   │ │
+   │ │   Operator  │    │  (集群 A)   │ │
+   │ │             │    └─────────────┘ │
+   │ └─────────────┘    ┌─────────────┐ │
+   │                    │   Agent-2   │ │
+   │                    │  (集群 B)   │ │
+   │                    └─────────────┘ │
+   │                          ▲         │
+   └──────────────────────────┼─────────┘
+                              │
+                ┌─────────────┴─────────────┐
+                │                           │
+                │      BMC 设备集群         │
+                │    (跨多个物理集群)       │
+                │                           │
+                └───────────────────────────┘
+   ```
 
-```yaml
-apiVersion: bmc.spidernet.io/v1beta1
-kind: bmcServer
-metadata:
-  name: test-bmc
-spec:
-  interface: "kube-system/macvlan-pod-network"
-  clusterName: "cluster1"
-```
+## 快速开始
 
-2. Apply the configuration:
-```bash
-kubectl apply -f bmc-server.yaml
-```
-
-## Development
-
-### Building from Source
-
-1. Prerequisites:
-   - Go 1.19+
-   - Docker
-   - Make
-
-2. Build all components:
-```bash
-make all
-```
-
-3. Build specific components:
-```bash
-make operator-image  # Build operator image
-make server-image   # Build server image
-make chart          # Package Helm chart
-```
-
-For more build options:
-```bash
-make usage
-```
-
-## License
-
-[Your License]
+请参考 [快速开始指南](doc/usage/quickstart.md) 了解详细的安装和使用说明。

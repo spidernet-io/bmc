@@ -28,87 +28,37 @@ HostOperation CRD 支持以下操作类型：
 
 1. 查看当前可操作的物理机列表：
 ```bash
-kubectl get hoststatus
+~# kubectl get hoststatus
+NAME                             CLUSTERAGENT       HEALTHY   IPADDR          TYPE           AGE
+bmc-clusteragent-host1           bmc-clusteragent   true      10.64.64.42     hostEndpoint   44s
+bmc-clusteragent-192-168-0-100   bmc-clusteragent   true      192.168.0.100   dhcp           64s
 ```
 
-2. 创建 HostOperation：
-
-以下是不同操作类型的 YAML 示例：
-
-正常开机：
-```yaml
-apiVersion: bmc.spidernet.io/v1beta1
-kind: HostOperation
-metadata:
-  name: host-1-on
-spec:
-  action: On
-  hostStatusName: host-1
-```
-
-强制关机：
-```yaml
-apiVersion: bmc.spidernet.io/v1beta1
-kind: HostOperation
-metadata:
-  name: host-1-forceoff
-spec:
-  action: ForceOff
-  hostStatusName: host-1
-```
-
-优雅重启：
-```yaml
-apiVersion: bmc.spidernet.io/v1beta1
-kind: HostOperation
-metadata:
-  name: host-1-gracefulrestart
-spec:
-  action: GracefulRestart
-  hostStatusName: host-1
-```
-
-PXE 重启：
-```yaml
-apiVersion: bmc.spidernet.io/v1beta1
-kind: HostOperation
-metadata:
-  name: host-1-pxereboot
-spec:
-  action: PxeReboot
-  hostStatusName: host-1
-```
+2. 创建 HostOperation， 每个实例代表了一次对主机的相关操作：
 
 创建操作：
 ```bash
-# 将上述 YAML 保存为文件（如 hostop.yaml）后执行：
-kubectl apply -f hostop.yaml
-
-# 或直接使用 kubectl create 命令：
 cat <<EOF | kubectl create -f -
 apiVersion: bmc.spidernet.io/v1beta1
 kind: HostOperation
 metadata:
-  name: host-1-gracefulshutdown
+  name: host1-restart
 spec:
-  action: GracefulShutdown
-  hostStatusName: host-1
+  action: "GracefulRestart"
+  hostStatusName: "bmc-clusteragent-host1"
 EOF
 ```
 
+> 注意：
+> 1. spec.action 的值，必须是小节 [支持的操作类型](#支持的操作类型) 中的一种
+> 2. spec.hostStatusName 的值，必须是步骤 1 中获取的已存在 hoststatus 实例的名字
+
 3. 查看操作状态：
 ```bash
-# 查看所有操作
+# 查看操作的完成状态
 kubectl get hostoperation
 
-# 查看特定操作的详细信息
-kubectl get hostoperation host-1-gracefulshutdown -o yaml
-
-# 监控操作状态变化
-kubectl get hostoperation host-1-gracefulshutdown -w
 ```
-
-### 状态说明
 
 操作状态可以通过 `status.status` 字段查看：
 
@@ -117,39 +67,3 @@ kubectl get hostoperation host-1-gracefulshutdown -w
 | pending | 操作正在执行中 |
 | success | 操作执行成功 |
 | failed | 操作执行失败 |
-
-### 注意事项
-
-1. 每个操作都是一次性的，不支持更新已创建的 HostOperation
-2. 建议使用有意义的命名方式，如 `<hostStatusName>-<action>` 格式
-3. 在执行操作前，请确保：
-   - 物理机处于健康状态
-   - 了解操作可能带来的影响
-   - 有足够的权限执行操作
-4. 如果操作失败：
-   - 查看 `status.message` 了解失败原因
-   - 检查物理机状态和网络连接
-   - 确保 BMC 接口可访问
-
-### 最佳实践
-
-1. 在执行关键操作前，建议：
-   - 备份重要数据
-   - 选择合适的维护时间窗口
-   - 通知相关人员
-
-2. 操作命名建议：
-   - 使用小写字母
-   - 使用有意义的前缀
-   - 包含操作类型信息
-   - 示例：`host-1-gracefulshutdown`、`host-2-pxereboot`
-
-3. 批量操作时：
-   - 建议分批执行
-   - 每批之间留有观察时间
-   - 确保有回滚方案
-
-4. 操作选择建议：
-   - 优先使用优雅操作（GracefulShutdown/GracefulRestart）
-   - 仅在必要时使用强制操作（ForceOff/ForceRestart）
-   - 确保了解每种操作的影响

@@ -20,7 +20,6 @@ The DHCP Server module provides a Go implementation for managing a DHCP server u
 ## Configuration
 
 ### Environment Variables
-- `DHCP_DEBUG_LOG`: When set to "true", enables detailed logging of dhcpd output
   - All dhcpd output will be captured and logged through the BMC logging system
   - Stdout is logged at INFO level
   - Stderr is logged at ERROR level
@@ -85,4 +84,3 @@ if err := server.Stop(); err != nil {
   - Access DHCP configuration and lease files
 - The DHCP server is automatically monitored and restarted if it fails
 - All operations are thread-safe
-- Detailed debug logs are available when `DHCP_DEBUG_LOG=true`

@@ -70,7 +70,7 @@ func (c *hostStatusController) UpdateHostStatusCr(d *data.HostConnectCon) error 
 		}
 		log.Logger.Infof("Successfully updated HostStatus %s status", name)
 	} else {
-		log.Logger.Debugf("no need to updated HostStatus %s status")
+		log.Logger.Debugf("no need to updated HostStatus %s status", name)
 	}
 
 	return nil
@@ -107,14 +107,14 @@ func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 }
 
 func (c *hostStatusController) UpdateHostStatusAtInterval() {
-
-	ticker := time.NewTicker(60 * time.Second)
+	interval := time.Duration(c.config.HostStatusUpdateInterval) * time.Second
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	log.Logger.Infof("begin to update all hostStatus at interval of %v seconds", 60)
+	log.Logger.Infof("begin to update all hostStatus at interval of %v seconds", c.config.HostStatusUpdateInterval)
 
 	for {
 		select {
-		case <-c.stopCh: // 使用 controller 中的 stopCh 来控制退出
+		case <-c.stopCh:
 			log.Logger.Info("Stopping UpdateHostStatusAtInterval")
 			return
 		case <-ticker.C:
