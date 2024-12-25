@@ -81,8 +81,8 @@ lint_chart_version:
 #================= update golang
 
 GO_VERSION := $(shell cat GO_VERSION | tr -d '\n' )
-GO_IMAGE_VERSION = $(shell awk -F. '{ z=$$3; if (z == "") z=0; print $$1 "." $$2 "." z}' <<< "${GO_VERSION}" )
-GO_MAJOR_AND_MINOR_VERSION = $(shell  grep  -o -E '^[0-9]+\.[0-9]+'  <<< "${GO_VERSION}" )
+GO_IMAGE_VERSION = $(shell echo ${GO_VERSION} | awk -F. '{ z=$$3; if (z == "") z=0; print $$1 "." $$2 "." z}' )
+GO_MAJOR_AND_MINOR_VERSION = $(shell  echo "${GO_VERSION}" | grep  -o -E '^[0-9]+\.[0-9]+' )
 
 
 ## Update Go version for all the components
@@ -97,20 +97,17 @@ update_images_dockerfile_golang:
 # Update Go version for GitHub workflow
 .PHONY: update_workflow_golang
 update_workflow_golang:
-	GO_IMAGE_VERSION=` awk -F. '{ z=$$3; if (z == "") z=0; print $$1 "." $$2 "." z}' <<< "$(GO_VERSION)" ` ; \
-		echo "update workflow golang to $${GO_IMAGE_VERSION}" ; \
+		echo "update workflow golang to ${GO_IMAGE_VERSION}" ; \
 		for fl in $(shell find .github/workflows -name "*.yaml" -print) ; do \
-  			sed -i 's/go-version: .*/go-version: '$${GO_IMAGE_VERSION}'/g' $$fl ; \
+  			sed -i 's/go-version: .*/go-version: '${GO_IMAGE_VERSION}'/g' $$fl ; \
   			done
 
 
 # Update Go version in go.mod
 .PHONY: update_mod_golang
 update_mod_golang:
-	GO_MAJOR_AND_MINOR_VERSION=` echo $(GO_VERSION) | grep  -o -E '^[0-9]+\.[0-9]+' `
-	GO_MAJOR_AND_MINOR_VERSION=` echo $(GO_VERSION) | grep  -o -E '^[0-9]+\.[0-9]+' ` ; \
-		echo "update go.mod to $${GO_MAJOR_AND_MINOR_VERSION}" ; \
-		sed -i -E 's/^go .*/go '"$${GO_MAJOR_AND_MINOR_VERSION}"'/g' go.mod
+		echo "update go.mod to ${GO_MAJOR_AND_MINOR_VERSION}" ; \
+		sed -i -E 's/^go .*/go '"${GO_MAJOR_AND_MINOR_VERSION}"'/g' go.mod
 
 
 #-------------------------------------------
