@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
-	"time"
 )
 
 // configureInterface configures the network interface with the specified IP address
@@ -311,23 +310,6 @@ func GetDhcpClients(leaseFilePath string) ([]types.ClientInfo, error) {
 	return clients, nil
 }
 
-// parseDhcpTime parses time from DHCP lease file format
-// Format example: "starts 3 2024/12/18 10:00:00;"
-func parseDhcpTime(line string) (time.Time, error) {
-	parts := strings.Fields(line)
-	if len(parts) < 4 {
-		return time.Time{}, fmt.Errorf("invalid time format")
-	}
-
-	// Combine date and time parts
-	timeStr := parts[2] + " " + parts[3]
-	// Remove trailing semicolon if present
-	timeStr = strings.TrimSuffix(timeStr, ";")
-
-	// Parse the combined string
-	return time.Parse("2006/01/02 15:04:05", timeStr)
-}
-
 // printDhcpLogTail prints the last 50 lines of the DHCP server log file
 func (s *dhcpServer) printDhcpLogTail() error {
 	// Check if log file exists
@@ -348,9 +330,4 @@ func (s *dhcpServer) printDhcpLogTail() error {
 	log.Logger.Info("=======================================")
 
 	return nil
-}
-
-// getLeaseFilePath returns the path to the DHCP lease file for this server instance
-func (s *dhcpServer) getLeaseFilePath() string {
-	return s.leaseFilePath
 }

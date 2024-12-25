@@ -98,7 +98,9 @@ func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 	for name, t := range syncData {
 		hostStatusLock.Lock()
 		log.Logger.Debugf("update status of the hostStatus %s ", name)
-		c.UpdateHostStatusCr(&t)
+		if err := c.UpdateHostStatusCr(&t); err != nil {
+			log.Logger.Errorf("failed to update HostStatus %s: %v", name, err)
+		}
 		hostStatusLock.Unlock()
 	}
 

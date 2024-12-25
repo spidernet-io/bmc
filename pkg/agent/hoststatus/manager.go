@@ -81,13 +81,17 @@ func (c *hostStatusController) Run(ctx context.Context) error {
 		cache.Indexers{},
 	)
 
-	hostEndpointInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := hostEndpointInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.handleHostEndpointAdd,
 		UpdateFunc: func(old, new interface{}) {
 			c.handleHostEndpointAdd(new)
 		},
 		DeleteFunc: c.handleHostEndpointDelete,
 	})
+	if err != nil {
+		log.Logger.Errorf("failed to add event handler for HostEndpoint: %v", err)
+		return err
+	}
 
 	c.informer = hostEndpointInformer
 
@@ -108,11 +112,15 @@ func (c *hostStatusController) Run(ctx context.Context) error {
 		cache.Indexers{},
 	)
 
-	hostStatusInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = hostStatusInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.handleHostStatusAdd,
 		UpdateFunc: c.handleHostStatusUpdate,
 		DeleteFunc: c.handleHostStatusDelete,
 	})
+	if err != nil {
+		log.Logger.Errorf("failed to add event handler for HostStatus: %v", err)
+		return err
+	}
 
 	c.statusInformer = hostStatusInformer
 
@@ -157,8 +165,8 @@ func (c *hostStatusController) Run(ctx context.Context) error {
 		}
 	}()
 
-	go func(){
-		c.UpdateHostStatusAtInterval()	
+	go func() {
+		c.UpdateHostStatusAtInterval()
 	}()
 
 	log.Logger.Debug("Both goroutines started")

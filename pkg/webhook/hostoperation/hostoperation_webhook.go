@@ -15,8 +15,7 @@ import (
 )
 
 type HostOperationWebhook struct {
-	Client  client.Client
-	decoder *admission.Decoder
+	Client client.Client
 }
 
 func (h *HostOperationWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {

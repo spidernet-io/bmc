@@ -295,7 +295,9 @@ func (s *dhcpServer) Stop() error {
 		log.Logger.Errorf("failed to stop DHCP server: %v", err)
 		return err
 	}
-	s.cmd.Wait()
+	if err := s.cmd.Wait(); err != nil {
+		log.Logger.Errorf("failed to wait for DHCP server: %v", err)
+	}
 	s.cmd = nil
 	log.Logger.Info("DHCP server stopped successfully")
 
