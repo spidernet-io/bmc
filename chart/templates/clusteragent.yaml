@@ -9,7 +9,7 @@ metadata:
 spec:
   agentYaml:
     replicas: {{ .Values.clusterAgent.agentYaml.replicas }}
-    image: "{{ .Values.clusterAgent.agentYaml.image.repository }}:{{ default .Chart.Version .Values.clusterAgent.agentYaml.image.tag }}"
+    image: "{{ include "bmc-operator.agent.image" . }}"
     underlayInterface: "{{ .Values.clusterAgent.agentYaml.underlayInterface }}"
     {{- with .Values.clusterAgent.agentYaml.nodeAffinity }}
     nodeAffinity:

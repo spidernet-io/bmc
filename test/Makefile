@@ -45,9 +45,7 @@ deploy:
 		--namespace bmc \
 		--create-namespace \
 		--wait \
-		--set image.repository=$(CONTROLLER_IMAGE) \
 		--set image.tag=$(VERSION) \
-		--set clusterAgent.agentYaml.image.repository=$(AGENT_IMAGE) \
 		--set clusterAgent.agentYaml.image.tag=$(VERSION) \
 		--set clusterAgent.endpoint.https=false \
 		--set clusterAgent.agentYaml.hostNetwork=false \

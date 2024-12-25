@@ -60,3 +60,47 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+return the controller image
+*/}}
+{{- define "bmc-operator.controller.image" -}}
+{{- $registryName := .Values.image.registry -}}
+{{- $repositoryName := .Values.image.repository -}}
+{{- if .Values.global.imageRegistryOverride }}
+    {{- printf "%s/%s" .Values.global.imageRegistryOverride $repositoryName -}}
+{{- else -}}
+    {{- printf "%s/%s" $registryName $repositoryName -}}
+{{- end -}}
+{{- if .Values.image.digest }}
+    {{- print "@" .Values.image.digest -}}
+{{- else if .Values.global.imageTagOverride -}}
+    {{- printf ":%s" .Values.global.imageTagOverride -}}
+{{- else if .Values.image.tag -}}
+    {{- printf ":%s" .Values.image.tag -}}
+{{- else -}}
+    {{- printf ":v%s" .Chart.AppVersion -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+return the agent image
+*/}}
+{{- define "bmc-operator.agent.image" -}}
+{{- $registryName := .Values.clusterAgent.agentYaml.image.registry -}}
+{{- $repositoryName := .Values.clusterAgent.agentYaml.image.repository -}}
+{{- if .Values.global.imageRegistryOverride }}
+    {{- printf "%s/%s" .Values.global.imageRegistryOverride $repositoryName -}}
+{{- else -}}
+    {{- printf "%s/%s" $registryName $repositoryName -}}
+{{- end -}}
+{{- if .Values.clusterAgent.agentYaml.image.digest }}
+    {{- print "@" .Values.clusterAgent.agentYaml.image.digest -}}
+{{- else if .Values.global.imageTagOverride -}}
+    {{- printf ":%s" .Values.global.imageTagOverride -}}
+{{- else if .Values.clusterAgent.agentYaml.image.tag -}}
+    {{- printf ":%s" .Values.clusterAgent.agentYaml.image.tag -}}
+{{- else -}}
+    {{- printf ":v%s" .Chart.AppVersion -}}
+{{- end -}}
+{{- end -}}

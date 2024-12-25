@@ -30,7 +30,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ default .Chart.Version .Values.image.tag }}"
+          image: {{ include "bmc-operator.controller.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - --metrics-bind-address=:{{ .Values.webhook.metricsPort }}
@@ -39,7 +39,7 @@ spec:
             - --leader-elect
           env:
             - name: AGENT_IMAGE
-              value: "{{ .Values.clusterAgent.agentYaml.image.repository }}:{{ default .Chart.Version .Values.clusterAgent.agentYaml.image.tag }}"
+              value: {{ include "bmc-operator.agent.image" . }}
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:

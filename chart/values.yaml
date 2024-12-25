@@ -5,10 +5,13 @@ replicaCount: 1
 logLevel: "debug"
 
 image:
-  repository: ghcr.io/spidernet-io/bmc-controller
+  registry: "ghcr.io"
+  repository: "spidernet-io/bmc-controller"
   pullPolicy: IfNotPresent
   # tag will be overridden by version from Chart.yaml
   tag: ""
+  # Optional: image digest
+  digest: ""
 resources:
   limits:
     cpu: 500m
@@ -22,10 +25,13 @@ securityContext: {}
 clusterAgent:
   agentYaml:
     image:
-      repository: ghcr.io/spidernet-io/bmc-agent
+      registry: "ghcr.io"
+      repository: "spidernet-io/bmc-agent"
       pullPolicy: IfNotPresent
       # tag will be overridden by version from Chart.yaml
       tag: ""
+      # Optional: image digest
+      digest: ""
     # Optional: network interface configuration
     underlayInterface: ""
     # Optional: Use host network for agent pods
@@ -139,3 +145,10 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# Global configuration
+global:
+  # Override image registry for all images
+  imageRegistryOverride: ""
+  # Override image tag for all images
+  imageTagOverride: ""
