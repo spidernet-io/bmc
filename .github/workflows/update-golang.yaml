@@ -29,6 +29,8 @@ jobs:
           echo "${latest_version}" > GO_VERSION
           cat GO_VERSION
           make update_go_version -e GO_VERSION=${latest_version}
+          git status
+          git diff 
           if ! test -z "$$(git status --porcelain)"; then
             echo "update golang"
             echo "RUN_UPDATE=true" >> $GITHUB_ENV
