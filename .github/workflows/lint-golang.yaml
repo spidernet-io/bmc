@@ -95,6 +95,7 @@ jobs:
       - name: check crd sdk
         if: ${{ needs.filter_changes.outputs.crd == 'true' }}
         run: |
+          go version
           make validate_crd_sdk
 
   lint-golang:

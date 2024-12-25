@@ -80,7 +80,7 @@ lint_chart_version:
 
 #================= update golang
 
-GO_VERSION := $(shell cat GO_VERSION | tr -d '\n' )
+GO_VERSION ?= $(shell cat GO_VERSION | tr -d '\n' )
 GO_IMAGE_VERSION := $(shell awk -F. '{ z=$$3; if (z == "") z=0; print $$1 "." $$2 "." z}' <<< "${GO_VERSION}" )
 GO_MAJOR_AND_MINOR_VERSION := $(shell  grep  -o -E '^[0-9]+\.[0-9]+'  <<< "${GO_VERSION}" )
 

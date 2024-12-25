@@ -27,10 +27,12 @@ jobs:
             exit 0
           }
           echo "${latest_version}" > GO_VERSION
-          make update_go_version
+          cat GO_VERSION
+          make update_go_version -e GO_VERSION=${latest_version}
           if ! test -z "$$(git status --porcelain)"; then
             echo "update golang"
             echo "RUN_UPDATE=true" >> $GITHUB_ENV
+            echo "GO_VERSION=${latest_version}" >> $GITHUB_ENV
           else
              echo "no need to update golang version"
              echo "RUN_UPDATE=false" >> $GITHUB_ENV
@@ -42,7 +44,7 @@ jobs:
         if: ${{ env.RUN_UPDATE == 'true' }}
         uses: peter-evans/create-pull-request@v5.0.2
         with:
-          title: "robot Update project owing to updated Golang Version "
+          title: "robot updates Golang Version to ${{ env.GO_VERSION }}"
           commit-message: "robot Update project owing to updated Golang Version "
           branch-suffix: timestamp
           branch: robot/update_golang
