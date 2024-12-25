@@ -126,7 +126,7 @@ jobs:
       - name: Check build
         run: |
           go vet ./... || {echo "go vet failed"; exit 1 ; }
-          make build-binaries || {echo "make build-binaries failed"; exit 1}
+          make build-binaries || {echo "make build-binaries failed"; exit 1 ; }
 
       # ================ lint
       - name: Run golangci-lint
