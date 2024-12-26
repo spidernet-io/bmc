@@ -14,8 +14,15 @@ BMC 组件内置了 DHCP server 功能，可以为 BMC 网络中的主机自动�
 # 首先为节点打标签，标记该节点具备访问 BMC 网络的能力，这样可以确保 BMC agent 组件运行在该节点上
 kubectl label node <node-name> bmc.spidernet.io/bmcnetwork=true
 
+helm repo add bmc https://spidernet-io.github.io/bmc
+helm repo update
+
 # 创建配置文件
 cat << EOF > my-values.yaml
+# for china mirror
+#global:
+#  imageRegistryOverride: ghcr.m.daocloud.io
+
 clusterAgent:
   agentYaml:
     hostNetwork: true
@@ -72,6 +79,10 @@ kubectl label node <node-name> bmc.spidernet.io/bmcnetwork=true
 
 # 创建配置文件
 cat << EOF > my-values.yaml
+# for china mirror
+#global:
+#  imageRegistryOverride: ghcr.m.daocloud.io
+
 clusterAgent:
   agentYaml:
     hostNetwork: false
