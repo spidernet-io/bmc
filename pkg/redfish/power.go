@@ -69,7 +69,7 @@ func (c *redfishClient) Power(bootCmd string) error {
 				BootSourceOverrideEnabled: redfish.OnceBootSourceOverrideEnabled,
 			}
 			c.logger.Infof("pxe reboot %s for System: %+v \n", c.config.Endpoint, system.Name)
-			err := system.SetBoot(bootOverride)
+			err = system.SetBoot(bootOverride)
 			if err != nil {
 				return fmt.Errorf("failed to set boot option")
 			}

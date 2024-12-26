@@ -61,7 +61,7 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 	log.Logger.Debugf("Processing DHCP add event - IP: %s, MAC: %s, Active: %v, Lease: %s -> %s",
 		client.IP, client.MAC, client.Active, client.StartTime, client.EndTime)
 
-	if c.config.AgentObjSpec.Feature.DhcpServerConfig != nil && c.config.AgentObjSpec.Feature.DhcpServerConfig.EnableDhcpDiscovery == false {
+	if c.config.AgentObjSpec.Feature.DhcpServerConfig != nil && !c.config.AgentObjSpec.Feature.DhcpServerConfig.EnableDhcpDiscovery {
 		log.Logger.Warnf("DhcpDiscovery is disabled, so ignore DHCP add event - IP: %s, MAC: %s, Active: %v, Lease: %s -> %s",
 			client.IP, client.MAC, client.Active, client.StartTime, client.EndTime)
 		return nil
@@ -160,7 +160,7 @@ func (c *hostStatusController) handleDHCPDelete(client dhcptypes.ClientInfo) err
 	name := formatHostStatusName(c.config.ClusterAgentName, client.IP)
 	log.Logger.Debugf("Processing DHCP delete event - IP: %s, MAC: %s", client.IP, client.MAC)
 
-	if c.config.AgentObjSpec.Feature.DhcpServerConfig != nil && c.config.AgentObjSpec.Feature.DhcpServerConfig.EnableDhcpDiscovery == false {
+	if c.config.AgentObjSpec.Feature.DhcpServerConfig != nil && !c.config.AgentObjSpec.Feature.DhcpServerConfig.EnableDhcpDiscovery {
 		log.Logger.Warnf("DhcpDiscovery is disabled, so ignore DHCP delete event - IP: %s, MAC: %s, Active: %v, Lease: %s -> %s",
 			client.IP, client.MAC, client.Active, client.StartTime, client.EndTime)
 		return nil

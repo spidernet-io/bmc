@@ -23,7 +23,6 @@ func setData(result map[string]string, key, value string) {
 	} else {
 		result[key] = value
 	}
-	return
 }
 
 const (

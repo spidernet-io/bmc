@@ -9,6 +9,7 @@ import (
 
 	"github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
+
 	//"github.com/spidernet-io/bmc/pkg/lock"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"github.com/spidernet-io/bmc/pkg/redfish"
@@ -24,7 +25,12 @@ var hostStatusLock = &sync.Mutex{}
 
 // ------------------------------  update the spec.info of the hoststatus
 
+// this is called by UpdateHostStatusAtInterval and UpdateHostStatusWrapper
 func (c *hostStatusController) UpdateHostStatusInfo(name string, d *data.HostConnectCon) error {
+
+	// local lock for updateing each hostStatus
+	hostStatusLock.Lock()
+	defer hostStatusLock.Unlock()
 
 	// 创建 redfish 客户端
 	client := redfish.NewClient(*d, log.Logger)
@@ -83,6 +89,7 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *data.HostCon
 	return nil
 }
 
+// this is called by UpdateHostStatusAtInterval and
 func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 	syncData := make(map[string]data.HostConnectCon)
 
@@ -103,12 +110,10 @@ func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 	}
 
 	for item, t := range syncData {
-		hostStatusLock.Lock()
 		log.Logger.Debugf("update status of the hostStatus %s ", item)
 		if err := c.UpdateHostStatusInfo(item, &t); err != nil {
 			log.Logger.Errorf("failed to update HostStatus %s: %v", item, err)
 		}
-		hostStatusLock.Unlock()
 	}
 
 	return nil
@@ -137,7 +142,7 @@ func (c *hostStatusController) UpdateHostStatusAtInterval() {
 
 // ------------------------------  hoststatus 的 reconcile , 触发更新
 
-// 缓存 hostStatus 数据到本地，并行更新 status.info 信息
+// 缓存 hostStatus 数据本地，并行更新 status.info 信息
 func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStatus, logger *zap.SugaredLogger) error {
 
 	logger.Debugf("Processing Existed HostStatus: %s (Type: %s, IP: %s, Health: %v)",
