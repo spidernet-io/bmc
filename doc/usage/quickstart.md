@@ -77,6 +77,9 @@ kubectl get pod -n bmc
 # 为节点打标签，标记该节点具备访问 BMC 网络的能力
 kubectl label node <node-name> bmc.spidernet.io/bmcnetwork=true
 
+helm repo add bmc https://spidernet-io.github.io/bmc
+helm repo update
+
 # 创建配置文件
 cat << EOF > my-values.yaml
 # for china mirror
