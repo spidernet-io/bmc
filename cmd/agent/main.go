@@ -17,6 +17,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/spidernet-io/bmc/pkg/agent/config"
+	"github.com/spidernet-io/bmc/pkg/agent/hostendpoint"
 	"github.com/spidernet-io/bmc/pkg/agent/hostoperation"
 	"github.com/spidernet-io/bmc/pkg/agent/hoststatus"
 	"github.com/spidernet-io/bmc/pkg/dhcpserver"
@@ -53,7 +54,7 @@ func main() {
 	log.Logger.Info("Starting BMC agent")
 
 	// Initialize Kubernetes clients
-	k8sClient, runtimeClient, err := initClients()
+	k8sClient, _, err := initClients()
 	if err != nil {
 		log.Logger.Errorf("Failed to initialize clients: %v", err)
 		os.Exit(1)
@@ -84,12 +85,21 @@ func main() {
 	}
 
 	// Initialize hoststatus controller
-	hostStatusCtrl := hoststatus.NewHostStatusController(runtimeClient, k8sClient, agentConfig)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	hostStatusCtrl := hoststatus.NewHostStatusController(k8sClient, agentConfig, mgr)
 
-	if err := hostStatusCtrl.Run(ctx); err != nil {
-		log.Logger.Errorf("Failed to start hoststatus controller: %v", err)
+	if err = hostStatusCtrl.SetupWithManager(mgr); err != nil {
+		log.Logger.Errorf("Unable to create hoststatus controller: %v", err)
+		os.Exit(1)
+	}
+
+	// Initialize hostendpoint controller, it will watch the hostendpoint and update the hoststatus
+	hostEndpointCtrl, err := hostendpoint.NewHostEndpointReconciler(mgr, k8sClient, agentConfig)
+	if err != nil {
+		log.Logger.Errorf("Failed to create hostendpoint controller: %v", err)
+		os.Exit(1)
+	}
+	if err = hostEndpointCtrl.SetupWithManager(mgr); err != nil {
+		log.Logger.Errorf("Unable to create hostendpoint controller: %v", err)
 		os.Exit(1)
 	}
 
@@ -140,6 +150,10 @@ func main() {
 		log.Logger.Errorf("Unable to set up ready check: %v", err)
 		os.Exit(1)
 	}
+
+	// Create context that can be canceled
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Start manager
 	go func() {

@@ -9,6 +9,7 @@ import (
 	"github.com/spidernet-io/bmc/pkg/log"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -16,14 +17,16 @@ const (
 	retryDelay = time.Second
 )
 
-func (c *hostStatusController) GetDHCPEventChan() (chan<- dhcptypes.ClientInfo, chan<- dhcptypes.ClientInfo) {
-	return c.addChan, c.deleteChan
+func shouldRetry(err error) bool {
+	return errors.IsConflict(err) || errors.IsServerTimeout(err) || errors.IsTooManyRequests(err)
 }
 
-func (c *hostStatusController) processDHCPEvents(ctx context.Context) {
+// process the dhcp events sent from DHCP server module, from the channel
+func (c *hostStatusController) processDHCPEvents() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c.stopCh:
+			log.Logger.Errorf("Stopping processDHCPEvents")
 			return
 		case event := <-c.addChan:
 			if err := c.handleDHCPAdd(event); err != nil {
@@ -51,6 +54,7 @@ func (c *hostStatusController) processDHCPEvents(ctx context.Context) {
 	}
 }
 
+// create the hoststatus for the dhcp client
 func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error {
 
 	name := formatHostStatusName(c.config.ClusterAgentName, client.IP)
@@ -65,10 +69,10 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 
 	// Try to get existing HostStatus
 	existing := &bmcv1beta1.HostStatus{}
-	existing, err := c.client.HostStatuses().Get(context.Background(), name, metav1.GetOptions{})
+	err := c.client.Get(context.Background(), types.NamespacedName{Name: name}, existing)
 
 	if err == nil {
-		// HostStatus exists, check if MAC changed
+		// HostStatus exists, check if MAC changed,  or if failed to update status after creating
 		if existing.Status.Basic.Mac == client.MAC {
 			log.Logger.Debugf("HostStatus %s exists with same MAC %s, no update needed", name, client.MAC)
 			return nil
@@ -82,7 +86,7 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 		updated.Status.LastUpdateTime = time.Now().UTC().Format(time.RFC3339)
 		updated.Status.Basic.Mac = client.MAC
 
-		if _, err := c.client.HostStatuses().UpdateStatus(context.Background(), updated, metav1.UpdateOptions{}); err != nil {
+		if err := c.client.Status().Update(context.Background(), updated); err != nil {
 			if errors.IsConflict(err) {
 				log.Logger.Debugf("Conflict updating HostStatus %s, will retry", name)
 				return err
@@ -96,13 +100,11 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 		return nil
 	}
 
-	// HostStatus doesn't exist, create new one
-	// IMPORTANT: When creating a new HostStatus, we must follow a two-step process:
-	// 1. First create the resource with only metadata (no status). This is because
-	//    the Kubernetes API server does not allow setting status during creation.
-	// 2. Then update the status separately using UpdateStatus. If we try to set
-	//    status during creation, the status will be silently ignored, leading to
-	//    a HostStatus without any status information until the next reconciliation.
+	if !errors.IsNotFound(err) {
+		log.Logger.Errorf("Failed to get HostStatus %s: %v", name, err)
+		return err
+	}
+
 	hostStatus := &bmcv1beta1.HostStatus{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -110,17 +112,26 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 	}
 	log.Logger.Debugf("Creating new HostStatus %s", name)
 
-	created, err := c.client.HostStatuses().Create(context.Background(), hostStatus, metav1.CreateOptions{})
-	if err != nil {
+	// HostStatus doesn't exist, create new one
+	// IMPORTANT: When creating a new HostStatus, we must follow a two-step process:
+	// 1. First create the resource with only metadata (no status). This is because
+	//    the Kubernetes API server does not allow setting status during creation.
+	// 2. Then update the status separately using UpdateStatus. If we try to set
+	//    status during creation, the status will be silently ignored, leading to
+	//    a HostStatus without any status information until the next reconciliation.
+	if err := c.client.Create(context.Background(), hostStatus); err != nil {
 		log.Logger.Errorf("Failed to create HostStatus %s: %v", name, err)
 		return err
 	}
 
-	// Now update the status
-	// This is the second step of the two-step process. After creating the resource,
-	// we update its status. This ensures that the status is properly set and visible
-	// immediately, without requiring a controller restart or reconciliation.
-	created.Status = bmcv1beta1.HostStatusStatus{
+	// Get the latest version of the resource after creation
+	// if err := c.client.Get(context.Background(), types.NamespacedName{Name: name}, hostStatus); err != nil {
+	// 	log.Logger.Errorf("Failed to get latest version of HostStatus %s: %v", name, err)
+	// 	return err
+	// }
+
+	// Now update the status using the latest version
+	hostStatus.Status = bmcv1beta1.HostStatusStatus{
 		Healthy:        false,
 		ClusterAgent:   c.config.ClusterAgentName,
 		LastUpdateTime: time.Now().UTC().Format(time.RFC3339),
@@ -134,7 +145,7 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 		Info: map[string]string{},
 	}
 
-	if _, err := c.client.HostStatuses().UpdateStatus(context.Background(), created, metav1.UpdateOptions{}); err != nil {
+	if err := c.client.Status().Update(context.Background(), hostStatus); err != nil {
 		log.Logger.Errorf("Failed to update status of HostStatus %s: %v", name, err)
 		return err
 	}
@@ -155,7 +166,12 @@ func (c *hostStatusController) handleDHCPDelete(client dhcptypes.ClientInfo) err
 		return nil
 	}
 
-	if err := c.client.HostStatuses().Delete(context.Background(), name, metav1.DeleteOptions{}); err != nil {
+	existing := &bmcv1beta1.HostStatus{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	if err := c.client.Delete(context.Background(), existing); err != nil {
 		if errors.IsNotFound(err) {
 			log.Logger.Debugf("HostStatus %s not found, already deleted", name)
 			return nil
