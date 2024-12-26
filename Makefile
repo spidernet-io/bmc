@@ -23,11 +23,11 @@ images: controller-image agent-image tools-image
 
 .PHONY: controller-image
 controller-image:
-	docker build -t $(CONTROLLER_IMAGE_REF) -f image/controller/Dockerfile .
+	docker build $(DOCKER_BUILD_FLAGS) -t $(CONTROLLER_IMAGE_REF) -f image/controller/Dockerfile .
 
 .PHONY: agent-image
 agent-image:
-	docker build -t $(AGENT_IMAGE_REF) -f image/agent/Dockerfile .
+	docker build $(DOCKER_BUILD_FLAGS) -t $(AGENT_IMAGE_REF) -f image/agent/Dockerfile .
 
 .PHONY: tools-image
 tools-image: build-tools-image
