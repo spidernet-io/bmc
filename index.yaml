@@ -2,8 +2,26 @@ apiVersion: v1
 entries:
   bmc-operator:
   - apiVersion: v2
+    appVersion: 0.2.0
+    created: "2024-12-27T12:48:58.329614144Z"
+    description: A Helm chart for BMC Operator
+    digest: 30d3259a2cb4aecdf228c091c5c079f6608e76db8165b487de581167805a6550
+    keywords:
+    - kubernetes
+    - operator
+    - bmc
+    - server
+    maintainers:
+    - name: spidernet-io
+      url: https://github.com/spidernet-io/bmc
+    name: bmc-operator
+    type: application
+    urls:
+    - https://spidernet-io.github.io/bmc/charts/bmc-operator-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
     appVersion: 0.1.0
-    created: "2024-12-26T06:20:41.540107161Z"
+    created: "2024-12-27T12:48:58.328935627Z"
     description: A Helm chart for BMC Operator
     digest: 66a806ee6516dc73ff9e7113a4f8239f7b27a8a9406ebc3d8b9eacbd9b38b329
     keywords:
@@ -19,4 +37,4 @@ entries:
     urls:
     - https://spidernet-io.github.io/bmc/charts/bmc-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2024-12-26T06:20:41.539255704Z"
+generated: "2024-12-27T12:48:58.328120263Z"
