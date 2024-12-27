@@ -20,48 +20,43 @@ func (s *dhcpServer) monitor() {
 	ticker := time.NewTicker(MonitorInterval * time.Second)
 	defer ticker.Stop()
 
-	for {
-		select {
+	for range ticker.C {
+		// 周期确认 dhcp lease 中是否有 新的 ip 分配变化，从而上报 到 hoststatus
+		if err := s.updateStats(); err != nil {
+			log.Logger.Debugf("Failed to update stats during monitoring: %v", err)
+		} else {
+			log.Logger.Debugf("Successfully updated DHCP server stats - Available IPs: %d, Used: %d, Usage: %.2f%%",
+				s.stats.AvailableIPs, s.stats.UsedIPs, s.stats.UsagePercentage)
+		}
 
-		case <-ticker.C:
-			// 周期确认 dhcp lease 中是否有 新的 ip 分配变化，从而上报 到 hoststatus
-			if err := s.updateStats(); err != nil {
-				log.Logger.Debugf("Failed to update stats during monitoring: %v", err)
+		// 周期确认 dhcp server 是否存活，是否要重启 dhcp server
+		// 周期确认 是否要更新 dhcp 的 固定 ip，是否要重启 dhcp server
+		needRestart := s.cmd == nil || s.cmd.Process == nil
+		if !needRestart {
+			// Process exists, check if it's still running
+			if err := s.cmd.Process.Signal(syscall.Signal(0)); err != nil {
+				log.Logger.Debugf("DHCP server process check failed: %v", err)
+				needRestart = true
 			} else {
-				log.Logger.Debugf("Successfully updated DHCP server stats - Available IPs: %d, Used: %d, Usage: %.2f%%",
-					s.stats.AvailableIPs, s.stats.UsedIPs, s.stats.UsagePercentage)
-			}
+				log.Logger.Debug("DHCP server process health check passed")
 
-			// 周期确认 dhcp server 是否存活，是否要重启 dhcp server
-			// 周期确认 是否要更新 dhcp 的 固定 ip，是否要重启 dhcp server
-			needRestart := s.cmd == nil || s.cmd.Process == nil
-			if !needRestart {
-				// Process exists, check if it's still running
-				if err := s.cmd.Process.Signal(syscall.Signal(0)); err != nil {
-					log.Logger.Debugf("DHCP server process check failed: %v", err)
+				// 周期确认 是否要更新 dhcp 的 固定 ip，是否要重启 dhcp server
+				if s.checkHostStatusForFixedIPs() {
+					log.Logger.Infof("Bond IP for host status should be updated, restart dhcp server")
 					needRestart = true
-				} else {
-					log.Logger.Debug("DHCP server process health check passed")
-
-					// 周期确认 是否要更新 dhcp 的 固定 ip，是否要重启 dhcp server
-					if s.checkHostStatusForFixedIPs() {
-						log.Logger.Infof("Bond IP for host status should be updated, restart dhcp server")
-						needRestart = true
-
-					}
 				}
 			}
-			if needRestart {
-				// Print last 50 lines of log file before restart
-				if err := s.printDhcpLogTail(); err != nil {
-					log.Logger.Errorf("Failed to print DHCP log tail: %v", err)
-				}
-				if err := s.Stop(); err != nil {
-					log.Logger.Warnf("Failed to stop DHCP server: %v", err)
-				}
-				if err := s.Start(); err != nil {
-					log.Logger.Errorf("Failed to restart DHCP server: %v", err)
-				}
+		}
+		if needRestart {
+			// Print last 50 lines of log file before restart
+			if err := s.printDhcpLogTail(); err != nil {
+				log.Logger.Errorf("Failed to print DHCP log tail: %v", err)
+			}
+			if err := s.Stop(); err != nil {
+				log.Logger.Warnf("Failed to stop DHCP server: %v", err)
+			}
+			if err := s.Start(); err != nil {
+				log.Logger.Errorf("Failed to restart DHCP server: %v", err)
 			}
 		}
 	}
