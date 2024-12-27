@@ -14,8 +14,15 @@ BMC 组件内置了 DHCP server 功能，可以为 BMC 网络中的主机自动�
 # 首先为节点打标签，标记该节点具备访问 BMC 网络的能力，这样可以确保 BMC agent 组件运行在该节点上
 kubectl label node <node-name> bmc.spidernet.io/bmcnetwork=true
 
+helm repo add bmc https://spidernet-io.github.io/bmc
+helm repo update
+
 # 创建配置文件
 cat << EOF > my-values.yaml
+# for china mirror
+#global:
+#  imageRegistryOverride: ghcr.m.daocloud.io
+
 clusterAgent:
   agentYaml:
     hostNetwork: true
@@ -46,7 +53,7 @@ clusterAgent:
 EOF
 
 # 安装 BMC 组件
-helm install bmc ./chart \
+helm install bmc bmc/bmc-operator \
     --namespace bmc  --create-namespace  --wait \
     -f my-values.yaml
 
@@ -70,8 +77,15 @@ kubectl get pod -n bmc
 # 为节点打标签，标记该节点具备访问 BMC 网络的能力
 kubectl label node <node-name> bmc.spidernet.io/bmcnetwork=true
 
+helm repo add bmc https://spidernet-io.github.io/bmc
+helm repo update
+
 # 创建配置文件
 cat << EOF > my-values.yaml
+# for china mirror
+#global:
+#  imageRegistryOverride: ghcr.m.daocloud.io
+
 clusterAgent:
   agentYaml:
     hostNetwork: false
@@ -101,7 +115,7 @@ clusterAgent:
 EOF
 
 # 安装 BMC 组件
-helm install bmc ./chart \
+helm install bmc bmc/bmc-operator \
     --namespace bmc  --create-namespace  --wait \
     -f my-values.yaml
 
@@ -149,13 +163,13 @@ spec:
     dhcpServerConfig:
       dhcpServerInterface: net1
       enableDhcpDiscovery: true
+      enableBindDhcpIP: true
+      enableBindStaticIP: true
       gateway: 192.168.0.1
       ipRange: 192.168.0.100-192.168.0.200
       selfIp: 192.168.0.2/24
       subnet: 192.168.0.0/24
     enableDhcpServer: true
-    enableGuiProxy: true
-    redfishMetrics: false
 status:
   ready: true
 ```

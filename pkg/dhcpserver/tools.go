@@ -2,17 +2,27 @@
 package dhcpserver
 
 import (
-	"bytes"
 	"fmt"
-	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
-	"github.com/spidernet-io/bmc/pkg/log"
-	"github.com/vishvananda/netlink"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
+
+	hoststatusdata "github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
+	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
+	"github.com/spidernet-io/bmc/pkg/log"
+	"github.com/vishvananda/netlink"
 )
+
+const (
+	virtualMac = "00:00:00:00:00:00"
+)
+
+type FixedIP struct {
+	IpAddr string
+	Mac    string
+}
 
 // configureInterface configures the network interface with the specified IP address
 // Parameters:
@@ -74,6 +84,9 @@ func configureInterface(interfaceName, selfIP string) error {
 //
 // Returns an error if configuration file cannot be created or written.
 func (s *dhcpServer) generateConfig() error {
+	s.lastBoundIPLock.Lock()
+	defer s.lastBoundIPLock.Unlock()
+
 	// Get network and mask from subnet
 	network, netmask, err := getNetworkAndMask(s.config.Subnet)
 	if err != nil {
@@ -102,31 +115,83 @@ func (s *dhcpServer) generateConfig() error {
 		Range      string
 		Router     string
 		SubnetMask string
+		FixedIPs   map[string]FixedIP
 	}{
 		Subnet:     network,
 		Netmask:    netmask,
 		Range:      ipRange,
 		Router:     s.config.Gateway,
 		SubnetMask: netmask,
+		FixedIPs:   make(map[string]FixedIP),
 	}
 
 	// Create config file
-	f, err := os.Create(DhcpConfigPath)
+	f, err := os.Create(s.dhcpConfigPath)
 	if err != nil {
 		return fmt.Errorf("failed to create config file: %v", err)
 	}
 	defer f.Close()
 
+	fixedIPs := map[string]string{}
+	if s.config.EnableBindStaticIP {
+		dhcpclientList := hoststatusdata.HostCacheDatabase.GetDhcpClientInfo()
+		for _, client := range dhcpclientList {
+			fixedIPs[client.Info.IpAddr] = client.Info.Mac
+		}
+	}
+	if s.config.EnableBindStaticIP {
+		staticclientList := hoststatusdata.HostCacheDatabase.GetStaticClientInfo()
+		for _, client := range staticclientList {
+			fixedIPs[client.Info.IpAddr] = virtualMac
+		}
+	}
+
+	// record the bound ip for this boot
+	s.lastBoundIPList = fixedIPs
+
+	if len(fixedIPs) > 0 {
+
+		// 将 fixedIPs 转换为 map 格式，并检查 IP 是否属于子网
+		_, subnet, err := net.ParseCIDR(s.config.Subnet)
+		if err != nil {
+			return fmt.Errorf("failed to parse subnet CIDR: %v", err)
+		}
+
+		count := 0
+		for ip, mac := range fixedIPs {
+			// 检查 IP 是否属于子网
+			ipAddr := net.ParseIP(ip)
+			if ipAddr == nil {
+				log.Logger.Warnf("invalid IP address format: %s, skipping", ip)
+				continue
+			}
+
+			if !subnet.Contains(ipAddr) {
+				log.Logger.Debugf("IP %s is not in subnet %s, skipping", ip, s.config.Subnet)
+				continue
+			}
+
+			count++
+			hostName := fmt.Sprintf("host%d", count)
+			data.FixedIPs[hostName] = FixedIP{IpAddr: ip, Mac: mac}
+			log.Logger.Debugf("add fixed ip to dhcp configuration for dhcp client: ip %s, mac %s", ip, mac)
+		}
+	}
+
 	// Execute template
 	if err := tmpl.Execute(f, data); err != nil {
 		return fmt.Errorf("failed to execute template: %v", err)
 	}
+	f.Close()
 
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return fmt.Errorf("failed to execute template: %v", err)
+	// Read the generated config file for logging
+	content, err := os.ReadFile(s.dhcpConfigPath)
+	if err != nil {
+		log.Logger.Warnf("Failed to read generated config file for logging: %v", err)
+		return err
+	} else {
+		log.Logger.Infof("generated DHCP config file at %s:\n%s", s.dhcpConfigPath, string(content))
 	}
-	log.Logger.Infof("generated DHCP config file at %s:\n%s", DhcpConfigPath, buf.String())
 
 	return nil
 }

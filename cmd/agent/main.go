@@ -69,7 +69,7 @@ func main() {
 
 	log.Logger.Info("Agent configuration loaded and validated successfully")
 	log.Logger.Debug("Agent configuration details:")
-	log.Logger.Debug(agentConfig.GetDetailString())
+	log.Logger.Debugf("\n%s", agentConfig.GetDetailString())
 
 	// Create manager
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{

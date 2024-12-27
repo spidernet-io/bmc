@@ -10,6 +10,7 @@ type HostConnectCon struct {
 	Info     *v1beta1.BasicInfo
 	Username string
 	Password string
+	DhcpHost bool
 }
 
 // HostCache 定义主机缓存结构
@@ -60,6 +61,38 @@ func (c *HostCache) GetAll() map[string]HostConnectCon {
 	result := make(map[string]HostConnectCon, len(c.data))
 	for k, v := range c.data {
 		result[k] = v
+	}
+
+	return result
+}
+
+// GetDhcpClientInfo 返回缓存中的所有DHCP主机数据
+func (c *HostCache) GetDhcpClientInfo() map[string]HostConnectCon {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	// 创建一个新的 map 来存储所有数据的副本
+	result := make(map[string]HostConnectCon, len(c.data))
+	for k, v := range c.data {
+		if v.DhcpHost {
+			result[k] = v
+		}
+	}
+
+	return result
+}
+
+// GetStaticClientInfo 返回缓存中的所有静态主机数据
+func (c *HostCache) GetStaticClientInfo() map[string]HostConnectCon {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	// 创建一个新的 map 来存储所有数据的副本
+	result := make(map[string]HostConnectCon, len(c.data))
+	for k, v := range c.data {
+		if !v.DhcpHost {
+			result[k] = v
+		}
 	}
 
 	return result

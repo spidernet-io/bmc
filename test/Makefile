@@ -45,11 +45,13 @@ deploy:
 		--namespace bmc \
 		--create-namespace \
 		--wait \
+		--set logLevel="debug" \
 		--set image.tag=$(VERSION) \
 		--set clusterAgent.agentYaml.image.tag=$(VERSION) \
 		--set clusterAgent.endpoint.https=false \
 		--set clusterAgent.agentYaml.hostNetwork=false \
 		--set clusterAgent.agentYaml.underlayInterface="spiderpool/eth0-macvlan" \
+		--set clusterAgent.feature.logLevel="debug" \
 		--set clusterAgent.feature.dhcpServerConfig.dhcpServerInterface="net1" \
 		--set clusterAgent.feature.dhcpServerConfig.subnet="192.168.0.0/24" \
 		--set clusterAgent.feature.dhcpServerConfig.ipRange="192.168.0.100-192.168.0.200" \

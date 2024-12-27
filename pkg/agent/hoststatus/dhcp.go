@@ -14,7 +14,8 @@ import (
 
 const (
 	// retryDelay is the delay before retrying a failed operation
-	retryDelay = time.Second
+	retryDelay     = time.Second
+	dhcpBoundLabel = "bmc.spidernet.io/dhcp-ip-active"
 )
 
 func shouldRetry(err error) bool {
@@ -70,7 +71,6 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 	// Try to get existing HostStatus
 	existing := &bmcv1beta1.HostStatus{}
 	err := c.client.Get(context.Background(), types.NamespacedName{Name: name}, existing)
-
 	if err == nil {
 		// HostStatus exists, check if MAC changed,  or if failed to update status after creating
 		if existing.Status.Basic.Mac == client.MAC {
@@ -108,6 +108,9 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 	hostStatus := &bmcv1beta1.HostStatus{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				dhcpBoundLabel: "true",
+			},
 		},
 	}
 	log.Logger.Debugf("Creating new HostStatus %s", name)
@@ -166,19 +169,54 @@ func (c *hostStatusController) handleDHCPDelete(client dhcptypes.ClientInfo) err
 		return nil
 	}
 
-	existing := &bmcv1beta1.HostStatus{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	if err := c.client.Delete(context.Background(), existing); err != nil {
-		if errors.IsNotFound(err) {
-			log.Logger.Debugf("HostStatus %s not found, already deleted", name)
-			return nil
+	if c.config.AgentObjSpec.Feature.DhcpServerConfig.EnableBindDhcpIP {
+		log.Logger.Infof("Enable Bind DhcpIP, so just label the hoststatus - IP: %s, MAC: %s", client.IP, client.MAC)
+
+		// 获取现有的 HostStatus
+		existing := &bmcv1beta1.HostStatus{}
+		err := c.client.Get(context.Background(), types.NamespacedName{Name: name}, existing)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Logger.Debugf("HostStatus %s not found, skip labeling", name)
+				return nil
+			}
+			log.Logger.Errorf("Failed to get HostStatus %s: %v", name, err)
+			return err
 		}
-		log.Logger.Errorf("Failed to delete HostStatus %s: %v", name, err)
-		return err
+
+		// 创建更新对象的副本
+		updated := existing.DeepCopy()
+		// 如果没有 labels map，则创建
+		if updated.Labels == nil {
+			updated.Labels = make(map[string]string)
+		}
+		// 添加或更新标签
+		updated.Labels[dhcpBoundLabel] = "false"
+		// 更新对象
+		if err := c.client.Update(context.Background(), updated); err != nil {
+			log.Logger.Errorf("Failed to update labels of HostStatus %s: %v", name, err)
+			return err
+		}
+		log.Logger.Infof("Successfully labeled HostStatus %s with dhcp-bound=false", name)
+
+	} else {
+		log.Logger.Infof("Disable Bind DhcpIP, so delete the hoststatus - IP: %s, MAC: %s", client.IP, client.MAC)
+
+		existing := &bmcv1beta1.HostStatus{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+		}
+		if err := c.client.Delete(context.Background(), existing); err != nil {
+			if errors.IsNotFound(err) {
+				log.Logger.Debugf("HostStatus %s not found, already deleted", name)
+				return nil
+			}
+			log.Logger.Errorf("Failed to delete HostStatus %s: %v", name, err)
+			return err
+		}
+		log.Logger.Infof("Successfully deleted HostStatus %s", name)
 	}
-	log.Logger.Infof("Successfully deleted HostStatus %s", name)
+
 	return nil
 }

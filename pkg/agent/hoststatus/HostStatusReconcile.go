@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
+	hoststatusdata "github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 
 	//"github.com/spidernet-io/bmc/pkg/lock"
@@ -26,7 +26,7 @@ var hostStatusLock = &sync.Mutex{}
 // ------------------------------  update the spec.info of the hoststatus
 
 // this is called by UpdateHostStatusAtInterval and UpdateHostStatusWrapper
-func (c *hostStatusController) UpdateHostStatusInfo(name string, d *data.HostConnectCon) error {
+func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusdata.HostConnectCon) error {
 
 	// local lock for updateing each hostStatus
 	hostStatusLock.Lock()
@@ -91,15 +91,15 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *data.HostCon
 
 // this is called by UpdateHostStatusAtInterval and
 func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
-	syncData := make(map[string]data.HostConnectCon)
+	syncData := make(map[string]hoststatusdata.HostConnectCon)
 
 	if len(name) == 0 {
-		syncData = data.HostCacheDatabase.GetAll()
+		syncData = hoststatusdata.HostCacheDatabase.GetAll()
 		if len(syncData) == 0 {
 			return nil
 		}
 	} else {
-		d := data.HostCacheDatabase.Get(name)
+		d := hoststatusdata.HostCacheDatabase.Get(name)
 		if d != nil {
 			syncData[name] = *d
 		}
@@ -164,10 +164,11 @@ func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStat
 	logger.Debugf("Adding/Updating HostStatus %s in cache with username: %s",
 		hostStatus.Name, username)
 
-	data.HostCacheDatabase.Add(hostStatus.Name, data.HostConnectCon{
+	hoststatusdata.HostCacheDatabase.Add(hostStatus.Name, hoststatusdata.HostConnectCon{
 		Info:     &hostStatus.Status.Basic,
 		Username: username,
 		Password: password,
+		DhcpHost: hostStatus.Status.Basic.Type == bmcv1beta1.HostTypeDHCP,
 	})
 
 	// update the status.info of the hostStatus
@@ -192,7 +193,8 @@ func (c *hostStatusController) Reconcile(ctx context.Context, req ctrl.Request) 
 	hostStatus := &bmcv1beta1.HostStatus{}
 	if err := c.client.Get(ctx, req.NamespacedName, hostStatus); err != nil {
 		if errors.IsNotFound(err) {
-			logger.Debugf("HostStatus not found, ignoring")
+			logger.Debugf("HostStatus not found, delete from cache")
+			hoststatusdata.HostCacheDatabase.Delete(req.Name)
 			return ctrl.Result{}, nil
 		}
 		logger.Error(err, "Failed to get HostStatus")
