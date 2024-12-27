@@ -31,7 +31,7 @@ jobs:
     name: prepare
     runs-on: ubuntu-latest
     outputs:
-      ref: ${{ env.RUN_REF }}
+      ref: ${{ env.REF }}
     steps:
       - name: Get Ref
         id: get_ref
