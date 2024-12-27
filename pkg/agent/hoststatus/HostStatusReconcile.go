@@ -168,6 +168,7 @@ func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStat
 		Info:     &hostStatus.Status.Basic,
 		Username: username,
 		Password: password,
+		DhcpHost: hostStatus.Status.Basic.Type == bmcv1beta1.HostTypeDHCP,
 	})
 
 	// update the status.info of the hostStatus

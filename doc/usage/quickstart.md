@@ -53,7 +53,7 @@ clusterAgent:
 EOF
 
 # 安装 BMC 组件
-helm install bmc ./chart \
+helm install bmc bmc/bmc-operator \
     --namespace bmc  --create-namespace  --wait \
     -f my-values.yaml
 
@@ -115,7 +115,7 @@ clusterAgent:
 EOF
 
 # 安装 BMC 组件
-helm install bmc ./chart \
+helm install bmc bmc/bmc-operator \
     --namespace bmc  --create-namespace  --wait \
     -f my-values.yaml
 
@@ -163,13 +163,13 @@ spec:
     dhcpServerConfig:
       dhcpServerInterface: net1
       enableDhcpDiscovery: true
+      enableBindDhcpIP: true
+      enableBindStaticIP: true
       gateway: 192.168.0.1
       ipRange: 192.168.0.100-192.168.0.200
       selfIp: 192.168.0.2/24
       subnet: 192.168.0.0/24
     enableDhcpServer: true
-    enableGuiProxy: true
-    redfishMetrics: false
 status:
   ready: true
 ```

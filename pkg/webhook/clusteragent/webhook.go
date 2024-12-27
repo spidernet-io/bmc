@@ -85,8 +85,6 @@ func (w *ClusterAgentWebhook) Default(ctx context.Context, obj runtime.Object) e
 	if clusterAgent.Spec.Feature == nil {
 		clusterAgent.Spec.Feature = &bmcv1beta1.FeatureConfig{
 			EnableDhcpServer: false,
-			RedfishMetrics:   false,
-			EnableGuiProxy:   false,
 		}
 	}
 
@@ -94,6 +92,8 @@ func (w *ClusterAgentWebhook) Default(ctx context.Context, obj runtime.Object) e
 	if clusterAgent.Spec.Feature.EnableDhcpServer && clusterAgent.Spec.Feature.DhcpServerConfig == nil {
 		clusterAgent.Spec.Feature.DhcpServerConfig = &bmcv1beta1.DhcpServerConfig{
 			EnableDhcpDiscovery: false,
+			EnableBindDhcpIP:    false,
+			EnableBindStaticIP:   false,
 			DhcpServerInterface: "",
 			Subnet:              "",
 			IpRange:             "",

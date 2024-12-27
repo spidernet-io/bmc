@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
+	"syscall"
 	"time"
 
 	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
@@ -22,7 +22,6 @@ type DhcpServer interface {
 	Start() error
 	Stop() error
 	GetClientInfo() ([]types.ClientInfo, error)
-	GetIPUsageStats() (*types.IPUsageStats, error)
 }
 
 // dhcpServer implements the DhcpServer interface.
@@ -35,14 +34,13 @@ type dhcpServer struct {
 	cmd *exec.Cmd
 	// mutex protects access to shared resources
 	mutex lock.Mutex
-	// stopChan signals the monitoring routine to stop
-	stopChan chan struct{}
+
 	// stats holds current IP usage statistics
 	stats types.IPUsageStats
 	// totalIPs is the total number of IP addresses available for allocation
 	totalIPs int
-	// ipRangeErr stores any error encountered while parsing IP range
-	ipRangeErr error
+	// dhcpConfigPath is the path to the DHCP server configuration file
+	dhcpConfigPath string
 	// previousClients stores the last known state of DHCP clients
 	previousClients []types.ClientInfo
 	// clusterAgentName is used to generate unique lease file path
@@ -52,6 +50,14 @@ type dhcpServer struct {
 	// Event channels for hoststatus
 	addChan    chan<- types.ClientInfo
 	deleteChan chan<- types.ClientInfo
+
+	// record the last time of the bound ip in the dhcp server
+	lastBoundIPList map[string]string
+	lastBoundIPLock *lock.Mutex
+
+	monitorStarted bool
+	// Channel to signal when the process has exited
+	waitDone chan struct{}
 }
 
 var _ DhcpServer = (*dhcpServer)(nil)
@@ -144,10 +150,14 @@ func NewDhcpServer(config *bmcv1beta1.DhcpServerConfig, clusterAgentName string,
 	server := &dhcpServer{
 		config:           config,
 		clusterAgentName: clusterAgentName,
-		stopChan:         make(chan struct{}),
 		leaseFilePath:    fmt.Sprintf(DhcpLeaseFileFormat, clusterAgentName),
 		addChan:          addChan,
 		deleteChan:       deleteChan,
+		dhcpConfigPath:   DefaultDhcpConfigPath,
+		lastBoundIPList:  map[string]string{},
+		lastBoundIPLock:  &lock.Mutex{},
+		monitorStarted:   false,
+		waitDone:         make(chan struct{}),
 	}
 
 	return server, nil
@@ -166,17 +176,20 @@ func (s *dhcpServer) Start() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	// Create new waitDone channel
+	s.waitDone = make(chan struct{})
+
 	log.Logger.Debugf("Starting DHCP server with config: interface=%s, subnet=%s, range=%s",
 		s.config.DhcpServerInterface, s.config.Subnet, s.config.IpRange)
 
 	// Calculate total IPs at startup
 	if err := s.calculateTotalIPs(); err != nil {
-		s.ipRangeErr = err
+		log.Logger.Errorf("failed to calculate total IPs: %v", err)
 		return fmt.Errorf("failed to calculate total IPs: %v", err)
 	}
 
 	// Ensure DHCP configuration directory exists
-	dhcpConfigDir := filepath.Dir(DhcpConfigPath)
+	dhcpConfigDir := filepath.Dir(s.dhcpConfigPath)
 	if err := os.MkdirAll(dhcpConfigDir, 0755); err != nil {
 		return fmt.Errorf("failed to create DHCP configuration directory: %v", err)
 	}
@@ -213,8 +226,8 @@ func (s *dhcpServer) Start() error {
 
 	log.Logger.Debugf("starting DHCP server with command: %s", DhcpBinary)
 	cmdArgs := []string{
-		"-f",                  // Run in foreground
-		"-cf", DhcpConfigPath, // Config file
+		"-f",                    // Run in foreground
+		"-cf", s.dhcpConfigPath, // Config file
 		"-lf", s.leaseFilePath, // Lease file
 		"-pf", "/var/run/dhcpd.pid", // PID file
 		"-tf", DhcpLogFile, // Log file
@@ -240,31 +253,31 @@ func (s *dhcpServer) Start() error {
 	s.cmd.Stdout = logFile
 	s.cmd.Stderr = logFile
 
-	// Start the DHCP server
-	if err := s.cmd.Start(); err != nil {
-		logFile.Close()
-		return fmt.Errorf("failed to start DHCP server: %v", err)
-	}
-
 	// Start a goroutine to close the log file when the process exits
 	go func() {
-		if err := s.cmd.Wait(); err != nil {
-			log.Logger.Errorf("DHCP server process exited with error: %v", err)
-			// Attempt to restart the server after a brief delay
-			time.Sleep(5 * time.Second)
-			if err := s.Start(); err != nil {
-				log.Logger.Errorf("Failed to restart DHCP server: %v", err)
+		// Start the DHCP server
+		if err := s.cmd.Start(); err != nil {
+			log.Logger.Errorf("failed to start DHCP server: %v", err)
+		} else {
+			log.Logger.Infof("DHCP server process started with PID: %d", s.cmd.Process.Pid)
+			if err := s.cmd.Wait(); err != nil {
+				log.Logger.Warnf("DHCP server process exited with error: %v", err)
 			} else {
-				log.Logger.Info("DHCP server restarted successfully")
+				log.Logger.Infof("DHCP server process exited normally")
 			}
 		}
 		logFile.Close()
+		close(s.waitDone) // Signal that the process has exited
 	}()
 
 	log.Logger.Info("DHCP server started successfully")
 
 	// Start monitoring routine
-	go s.monitor()
+	if !s.monitorStarted {
+		s.monitorStarted = true
+		time.Sleep(3 * time.Second)
+		go s.monitor()
+	}
 
 	return nil
 }
@@ -280,24 +293,52 @@ func (s *dhcpServer) Stop() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	log.Logger.Debugf("Stopping DHCP server...")
+	log.Logger.Infof("Stopping DHCP server...")
 
 	if s.cmd == nil || s.cmd.Process == nil {
 		log.Logger.Debug("DHCP server is not running")
 		return nil
 	}
 
-	// Signal monitor to stop
-	close(s.stopChan)
+	// log.Logger.Debugf("Terminating DHCP server process (PID: %d)", s.cmd.Process.Pid)
+	// if err := s.cmd.Process.Kill(); err != nil {
+	//     log.Logger.Errorf("failed to stop DHCP server: %v", err)
+	//     return err
+	// }
+	// <-s.waitDone
 
-	log.Logger.Debugf("Terminating DHCP server process (PID: %d)", s.cmd.Process.Pid)
-	if err := s.cmd.Process.Kill(); err != nil {
-		log.Logger.Errorf("failed to stop DHCP server: %v", err)
-		return err
+	log.Logger.Debugf("Sending SIGTERM to DHCP server process (PID: %d)", s.cmd.Process.Pid)
+	if err := s.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		log.Logger.Warnf("Failed to send SIGTERM to DHCP server: %v, trying SIGKILL", err)
+		if err := s.cmd.Process.Kill(); err != nil {
+			log.Logger.Errorf("Failed to kill DHCP server: %v", err)
+			return err
+		}
+		<-s.waitDone
+		s.cmd = nil
+		log.Logger.Info("DHCP server stopped by SIGKILL")
+		return nil
 	}
-	if err := s.cmd.Wait(); err != nil {
-		log.Logger.Errorf("failed to wait for DHCP server: %v", err)
+
+	// Wait for process to exit with timeout
+	done := make(chan struct{})
+	go func() {
+		<-s.waitDone
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Logger.Info("DHCP server stopped gracefully")
+	case <-time.After(10 * time.Second):
+		log.Logger.Warn("DHCP server did not stop gracefully, sending SIGKILL")
+		if err := s.cmd.Process.Kill(); err != nil {
+			log.Logger.Errorf("Failed to kill DHCP server: %v", err)
+			return err
+		}
+		<-s.waitDone
 	}
+
 	s.cmd = nil
 	log.Logger.Info("DHCP server stopped successfully")
 

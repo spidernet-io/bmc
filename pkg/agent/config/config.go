@@ -146,6 +146,8 @@ func (c *AgentConfig) GetDetailString() string {
 			details.WriteString("    DhcpServerConfig:\n")
 			config := c.AgentObjSpec.Feature.DhcpServerConfig
 			details.WriteString(fmt.Sprintf("      EnableDhcpDiscovery: %v\n", config.EnableDhcpDiscovery))
+			details.WriteString(fmt.Sprintf("      EnableBindDhcpIP: %v\n", config.EnableBindDhcpIP))
+			details.WriteString(fmt.Sprintf("      EnableBindStaticIP: %v\n", config.EnableBindStaticIP))
 			details.WriteString(fmt.Sprintf("      DhcpServerInterface: %s\n", config.DhcpServerInterface))
 			details.WriteString(fmt.Sprintf("      Subnet: %s\n", config.Subnet))
 			details.WriteString(fmt.Sprintf("      IpRange: %s\n", config.IpRange))
@@ -154,9 +156,6 @@ func (c *AgentConfig) GetDetailString() string {
 				details.WriteString(fmt.Sprintf("      SelfIp: %s\n", config.SelfIp))
 			}
 		}
-
-		details.WriteString(fmt.Sprintf("    RedfishMetrics: %v\n", c.AgentObjSpec.Feature.RedfishMetrics))
-		details.WriteString(fmt.Sprintf("    EnableGuiProxy: %v\n", c.AgentObjSpec.Feature.EnableGuiProxy))
 	}
 
 	// Add HostStatusUpdateInterval to details

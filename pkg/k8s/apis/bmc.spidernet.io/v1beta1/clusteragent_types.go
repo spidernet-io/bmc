@@ -97,6 +97,14 @@ type DhcpServerConfig struct {
 	// +kubebuilder:validation:Required
 	EnableDhcpDiscovery bool `json:"enableDhcpDiscovery"`
 
+	// EnableBindDhcpIP enables DHCP IP binding
+	// +kubebuilder:default=true
+	EnableBindDhcpIP bool `json:"enableBindDhcpIP"`
+
+	// EnableBindStaticIP enables static IP binding
+	// +kubebuilder:default=true
+	EnableBindStaticIP bool `json:"enableBindStaticIP"`
+
 	// DhcpServerInterface specifies the interface for DHCP server
 	// +kubebuilder:validation:Required
 	DhcpServerInterface string `json:"dhcpServerInterface"`
@@ -132,13 +140,6 @@ type FeatureConfig struct {
 	// +optional
 	DhcpServerConfig *DhcpServerConfig `json:"dhcpServerConfig,omitempty"`
 
-	// RedfishMetrics enables redfish metrics collection
-	// +kubebuilder:default=false
-	RedfishMetrics bool `json:"redfishMetrics,omitempty"`
-
-	// EnableGuiProxy enables GUI proxy
-	// +kubebuilder:default=true
-	EnableGuiProxy bool `json:"enableGuiProxy,omitempty"`
 }
 
 // ClusterAgentStatus defines the observed state of ClusterAgent
