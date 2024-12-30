@@ -92,12 +92,13 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 // this is called by UpdateHostStatusAtInterval and
 func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 	syncData := make(map[string]hoststatusdata.HostConnectCon)
-
+	modeinfo := ""
 	if len(name) == 0 {
 		syncData = hoststatusdata.HostCacheDatabase.GetAll()
 		if len(syncData) == 0 {
 			return nil
 		}
+		modeinfo = " during periodic update"
 	} else {
 		d := hoststatusdata.HostCacheDatabase.Get(name)
 		if d != nil {
@@ -107,12 +108,13 @@ func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 			log.Logger.Errorf("no cache data found for hostStatus %s ", name)
 			return fmt.Errorf("no cache data found for hostStatus %s ", name)
 		}
+		modeinfo = " during hoststatus reconcile"
 	}
 
 	for item, t := range syncData {
 		log.Logger.Debugf("update status of the hostStatus %s ", item)
 		if err := c.UpdateHostStatusInfo(item, &t); err != nil {
-			log.Logger.Errorf("failed to update HostStatus %s: %v", item, err)
+			log.Logger.Errorf("failed to update HostStatus %s %s: %v", item, modeinfo, err)
 		}
 	}
 
@@ -219,11 +221,12 @@ func (c *hostStatusController) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// 处理 HostStatus
 	if err := c.processHostStatus(hostStatus, logger); err != nil {
-		logger.Error(err, "Failed to process HostStatus")
+		logger.Error(err, "Failed to process HostStatus, will retry")
 		return ctrl.Result{
 			RequeueAfter: time.Second * 2,
 		}, err
 	}
 
+	logger.Debugf("Successfully processed HostStatus %s", hostStatus.Name)
 	return ctrl.Result{}, nil
 }
