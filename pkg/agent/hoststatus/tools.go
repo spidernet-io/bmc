@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/spidernet-io/bmc/pkg/log"
@@ -38,4 +39,40 @@ func (c *hostStatusController) getSecretData(secretName, secretNamespace string)
 
 func formatHostStatusName(agentName, ip string) string {
 	return fmt.Sprintf("%s-%s", agentName, strings.ReplaceAll(ip, ".", "-"))
+}
+
+// 比较两个Status的内容是否相同，忽略指针等问题
+func compareHostStatus(a, b bmcv1beta1.HostStatusStatus) bool {
+	if a.Healthy != b.Healthy {
+		return false
+	}
+	if a.ClusterAgent != b.ClusterAgent {
+		return false
+	}
+	if a.LastUpdateTime != b.LastUpdateTime {
+		return false
+	}
+
+	// 比较Basic字段
+	if a.Basic.Type != b.Basic.Type ||
+		a.Basic.IpAddr != b.Basic.IpAddr ||
+		a.Basic.SecretName != b.Basic.SecretName ||
+		a.Basic.SecretNamespace != b.Basic.SecretNamespace ||
+		a.Basic.Https != b.Basic.Https ||
+		a.Basic.Port != b.Basic.Port ||
+		a.Basic.Mac != b.Basic.Mac ||
+		a.Basic.ActiveDhcpClient != b.Basic.ActiveDhcpClient {
+		return false
+	}
+
+	// 比较Info map中的内容
+	if len(a.Info) != len(b.Info) {
+		return false
+	}
+	for k, v1 := range a.Info {
+		if v2, ok := b.Info[k]; !ok || v1 != v2 {
+			return false
+		}
+	}
+	return true
 }

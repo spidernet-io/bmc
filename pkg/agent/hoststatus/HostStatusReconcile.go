@@ -3,7 +3,6 @@ package hoststatus
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -26,7 +25,7 @@ var hostStatusLock = &sync.Mutex{}
 // ------------------------------  update the spec.info of the hoststatus
 
 // this is called by UpdateHostStatusAtInterval and UpdateHostStatusWrapper
-func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusdata.HostConnectCon) error {
+func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusdata.HostConnectCon) (bool, error) {
 
 	// local lock for updateing each hostStatus
 	hostStatusLock.Lock()
@@ -50,7 +49,7 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 	err := c.client.Get(context.Background(), types.NamespacedName{Name: name}, existing)
 	if err != nil {
 		log.Logger.Errorf("Failed to get HostStatus %s: %v", name, err)
-		return err
+		return false, err
 	}
 	updated := existing.DeepCopy()
 
@@ -75,22 +74,20 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 	}
 
 	// 更新 HostStatus
-	if !reflect.DeepEqual(updated.Status, existing.Status) {
+	if !compareHostStatus(updated.Status, existing.Status) {
 		updated.Status.LastUpdateTime = time.Now().UTC().Format(time.RFC3339)
 		if err := c.client.Status().Update(context.Background(), updated); err != nil {
 			log.Logger.Errorf("Failed to update status of HostStatus %s: %v", name, err)
-			return err
+			return true, err
 		}
 		log.Logger.Infof("Successfully updated HostStatus %s status", name)
-	} else {
-		log.Logger.Debugf("no need to updated HostStatus %s status", name)
+		return true, nil
 	}
-
-	return nil
+	return false, nil
 }
 
 // this is called by UpdateHostStatusAtInterval and
-func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
+func (c *hostStatusController) UpdateHostStatusInfoWrapper(name string) error {
 	syncData := make(map[string]hoststatusdata.HostConnectCon)
 	modeinfo := ""
 	if len(name) == 0 {
@@ -112,9 +109,14 @@ func (c *hostStatusController) UpdateHostStatusWrapper(name string) error {
 	}
 
 	for item, t := range syncData {
-		log.Logger.Debugf("update status of the hostStatus %s ", item)
-		if err := c.UpdateHostStatusInfo(item, &t); err != nil {
+		if updated, err := c.UpdateHostStatusInfo(item, &t); err != nil {
 			log.Logger.Errorf("failed to update HostStatus %s %s: %v", item, modeinfo, err)
+		} else {
+			if updated {
+				log.Logger.Debugf("update status of the hostStatus %s %s", item, modeinfo)
+			} else {
+				log.Logger.Debugf("no need to update status of the hostStatus %s %s", item, modeinfo)
+			}
 		}
 	}
 
@@ -135,7 +137,7 @@ func (c *hostStatusController) UpdateHostStatusAtInterval() {
 			return
 		case <-ticker.C:
 			log.Logger.Debugf("update all hostStatus at interval ")
-			if err := c.UpdateHostStatusWrapper(""); err != nil {
+			if err := c.UpdateHostStatusInfoWrapper(""); err != nil {
 				log.Logger.Errorf("Failed to update host status: %v", err)
 			}
 		}
@@ -173,10 +175,13 @@ func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStat
 		DhcpHost: hostStatus.Status.Basic.Type == bmcv1beta1.HostTypeDHCP,
 	})
 
-	// update the status.info of the hostStatus
-	if err := c.UpdateHostStatusWrapper(hostStatus.Name); err != nil {
-		logger.Errorf("failed to update HostStatus %s: %v", hostStatus.Name, err)
-		return err
+	if len(hostStatus.Status.Info) == 0 {
+		if err := c.UpdateHostStatusInfoWrapper(hostStatus.Name); err != nil {
+			logger.Errorf("failed to update HostStatus %s: %v", hostStatus.Name, err)
+			return err
+		}
+	} else {
+		logger.Debugf("HostStatus %s has already been processed, skipping the first time update", hostStatus.Name)
 	}
 
 	logger.Debugf("Successfully processed HostStatus %s", hostStatus.Name)
@@ -184,6 +189,7 @@ func (c *hostStatusController) processHostStatus(hostStatus *bmcv1beta1.HostStat
 }
 
 // Reconcile 实现 reconcile.Reconciler 接口
+// 负责在 hoststatus 创建后 Info 信息的第一次更新（后续的更新由 UpdateHostStatusAtInterval 完成）
 func (c *hostStatusController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.Logger.With(
 		zap.String("hoststatus", req.Name),
