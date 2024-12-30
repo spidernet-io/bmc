@@ -49,7 +49,6 @@ clusterAgent:
   # 当启用 enableDhcpServer 时，需要配置数据存储方式
   storage:
     type: "pvc"                    # 指定 DHCP server 存储客户端分配 IP 数据的方式，支持 pvc（适用于生产环境）和 hostPath（适用于 POC 环境）
-
 EOF
 
 # 安装 BMC 组件
@@ -59,9 +58,9 @@ helm install bmc bmc/bmc-operator \
 
 # 验证安装结果
 kubectl get pod -n bmc
-    NAME                                      READY   STATUS    RESTARTS   AGE
-    agent-bmc-clusteragent-6b9695698b-hphkj   1/1     Running   0          39m
-    bmc-bmc-operator-7b4986f89c-bd9j9         1/1     Running   0          40m
+NAME                                      READY   STATUS    RESTARTS   AGE
+agent-bmc-clusteragent-6b9695698b-hphkj   1/1     Running   0          39m
+bmc-bmc-operator-7b4986f89c-bd9j9         1/1     Running   0          40m
 ```
 
 ### 多集群纳管，以 macvlan 模式部署
@@ -111,7 +110,6 @@ clusterAgent:
     password: "password"           # 指定所有纳管主机的默认 BMC 密码
   storage:
     type: "pvc"                    # 指定 DHCP server 存储客户端分配 IP 数据的方式
-
 EOF
 
 # 安装 BMC 组件
@@ -121,9 +119,9 @@ helm install bmc bmc/bmc-operator \
 
 # 验证安装结果
 kubectl get pod -n bmc
-    NAME                                      READY   STATUS    RESTARTS   AGE
-    agent-bmc-clusteragent-6b9695698b-hphkj   1/1     Running   0          39m
-    bmc-bmc-operator-7b4986f89c-bd9j9         1/1     Running   0          40m
+NAME                                      READY   STATUS    RESTARTS   AGE
+agent-bmc-clusteragent-6b9695698b-hphkj   1/1     Running   0          39m
+bmc-bmc-operator-7b4986f89c-bd9j9         1/1     Running   0          40m
 ```
 
 ## 接入主机
@@ -135,14 +133,14 @@ BMC 组件支持运行多个 agent 来纳管多个集群。安装完成后，系
 ```bash
 # 查看 agent 实例状态
 ~# kubectl get clusteragent
-    NAME               READY
-    bmc-clusteragent   true
+NAME               READY
+bmc-clusteragent   true
 
 # 查看 agent 和 operator 的 Pod 状态
 ~# kubectl get pod -n bmc
-    NAME                                      READY   STATUS    RESTARTS   AGE
-    agent-bmc-clusteragent-6b9695698b-hphkj   1/1     Running   0          39m
-    bmc-bmc-operator-7b4986f89c-bd9j9         1/1     Running   0          40m
+NAME                                      READY   STATUS    RESTARTS   AGE
+agent-bmc-clusteragent-6b9695698b-hphkj   1/1     Running   0          39m
+bmc-bmc-operator-7b4986f89c-bd9j9         1/1     Running   0          40m
 
 # 查看 agent 实例的详细配置
 ~# kubectl get clusteragent bmc-clusteragent -o yaml
@@ -181,7 +179,7 @@ status:
 ```bash
 # 查看 hoststatus 实例，每个实例代表一个被纳管的 BMC 主机
 # 确认 HEALTHY 状态为 true 表示主机已被成功纳管
-~# kubectl get hoststatus
+~# kubectl get hoststatus -l bmc.spidernet.io/mode=dhcp
 NAME                             CLUSTERAGENT       HEALTHY   IPADDR          TYPE           AGE
 bmc-clusteragent-192-168-0-100   bmc-clusteragent   true      192.168.0.100   dhcp           48m
 bmc-clusteragent-192-168-0-101   bmc-clusteragent   true      192.168.0.101   dhcp           48m
@@ -279,10 +277,8 @@ NAME                CLUSTERAGENT       HOSTIP
 device10            bmc-clusteragent   10.64.64.42
 
 # 查看所有主机的状态，确认新添加的主机状态为 HEALTHY
-~# kubectl get hoststatus
+~# kubectl get hoststatus -l bmc.spidernet.io/mode=hostEndpoint
 NAME                             CLUSTERAGENT       HEALTHY   IPADDR          TYPE           AGE
-bmc-clusteragent-192-168-0-100   bmc-clusteragent   true      192.168.0.100   dhcp           48m
-bmc-clusteragent-192-168-0-101   bmc-clusteragent   true      192.168.0.101   dhcp           48m
 bmc-clusteragent-10-64-64-42     bmc-clusteragent   true      10.64.64.42     hostEndpoint    1m
 ```
 
@@ -290,3 +286,21 @@ bmc-clusteragent-10-64-64-42     bmc-clusteragent   true      10.64.64.42     ho
 
 完成主机接入后，您可以对主机进行电源管理等操作，具体请参考 [主机操作](./action.md) 章节。
 
+## 故障运维
+
+1. 查看 hoststatus 对象的 HEALTHY 健康状态，如果不健康，代表这该主机无法正常访问 BMC，也许是 IP 地址不对，也许是 BMC 用户名密码不对，也许是 BMC 主机不支持 redfish 协议，因此，需要人为进行排查故障
+
+```bash
+# kubectl get hoststatus
+NAME                             CLUSTERAGENT       HEALTHY   IPADDR          TYPE           AGE
+bmc-clusteragent-192-168-0-101   bmc-clusteragent   true      192.168.0.101   dhcp           2d14h
+device-safe                      bmc-clusteragent   true      10.64.64.42     hostEndpoint   2d14h
+gpu                              bmc-clusteragent   true      10.64.64.94     hostEndpoint   2d14h
+test-hostendpoint                bmc-clusteragent   true      192.168.0.50    hostEndpoint   2d14h
+```
+
+2. 对于 DHCP 接入的主机，当使用绑定 IP 和 MAC 功能时，当期望解除 IP 和 MAC 的绑定，可按照如下流程：
+
+    1. 进入 agent pod 中，查看 DHCP server 的实时 IP 分配文件 `/var/lib/dhcp/bmc-clusteragent-dhcpd.leases`，确认和删除其中期望解除绑定的 IP 地址
+    2. `kubectl get hoststatus -l status.basic.ipAddr=<IP>` 查看 hoststatus 对象，确认其中的 IP 和 MAC 地址符合删除预期，然后手动删除对应的 hoststatus 对象 `kubectl delete hoststatus -l status.basic.ipAddr=192.168.0.101`
+    3. 后端会自动更新 DHCP server 的配置，实现 IP 和 MAC 地址的解绑（可进入 agent pod 中，查看文件 `/etc/dhcp/dhcpd.conf` 确认）

@@ -4,6 +4,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	LabelIPAddr       = GroupName + "/ipAddr"
+	LabelClientMode   = GroupName + "/mode"
+	LabelClientActive = GroupName + "/dhcp-ip-active"
+)
+
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -38,6 +44,9 @@ type BasicInfo struct {
 	Https           bool   `json:"https"`
 	Port            int32  `json:"port"`
 	Mac             string `json:"mac,omitempty"`
+	// ActiveDhcpClient specifies this host is an active dhcp client when type is dhcp
+	// +optional
+	ActiveDhcpClient bool `json:"activeDhcpClient,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

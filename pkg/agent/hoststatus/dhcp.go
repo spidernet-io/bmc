@@ -14,8 +14,7 @@ import (
 
 const (
 	// retryDelay is the delay before retrying a failed operation
-	retryDelay     = time.Second
-	dhcpBoundLabel = "bmc.spidernet.io/dhcp-ip-active"
+	retryDelay = time.Second
 )
 
 func shouldRetry(err error) bool {
@@ -109,7 +108,9 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
-				dhcpBoundLabel: "true",
+				bmcv1beta1.LabelIPAddr:       client.IP,
+				bmcv1beta1.LabelClientMode:   bmcv1beta1.HostTypeDHCP,
+				bmcv1beta1.LabelClientActive: "true",
 			},
 		},
 	}
@@ -139,11 +140,12 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 		ClusterAgent:   c.config.ClusterAgentName,
 		LastUpdateTime: time.Now().UTC().Format(time.RFC3339),
 		Basic: bmcv1beta1.BasicInfo{
-			Type:   bmcv1beta1.HostTypeDHCP,
-			IpAddr: client.IP,
-			Mac:    client.MAC,
-			Port:   c.config.AgentObjSpec.Endpoint.Port,
-			Https:  c.config.AgentObjSpec.Endpoint.HTTPS,
+			Type:             bmcv1beta1.HostTypeDHCP,
+			IpAddr:           client.IP,
+			Mac:              client.MAC,
+			Port:             c.config.AgentObjSpec.Endpoint.Port,
+			Https:            c.config.AgentObjSpec.Endpoint.HTTPS,
+			ActiveDhcpClient: true,
 		},
 		Info: map[string]string{},
 	}
@@ -191,7 +193,8 @@ func (c *hostStatusController) handleDHCPDelete(client dhcptypes.ClientInfo) err
 			updated.Labels = make(map[string]string)
 		}
 		// 添加或更新标签
-		updated.Labels[dhcpBoundLabel] = "false"
+		updated.Labels[bmcv1beta1.LabelClientActive] = "false"
+		updated.Status.Basic.ActiveDhcpClient = false
 		// 更新对象
 		if err := c.client.Update(context.Background(), updated); err != nil {
 			log.Logger.Errorf("Failed to update labels of HostStatus %s: %v", name, err)

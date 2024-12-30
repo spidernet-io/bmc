@@ -2,8 +2,9 @@ package redfish
 
 import (
 	"fmt"
-	"github.com/stmcginnis/gofish"
 	"strings"
+
+	"github.com/stmcginnis/gofish"
 )
 
 // Health 实现健康检查方法
@@ -104,41 +105,44 @@ func (c *redfishClient) GetInfo() (map[string]string, error) {
 	c.logger.Debugf("cpus amount: %d", len(cpus))
 	for n, cpu := range cpus {
 		//c.logger.Debugf("Cpu[%d]: %+v", n, cpu)
-		setData(result, fmt.Sprintf("Cpu[%d].Architecture", n), string(cpu.ProcessorArchitecture))
 		setData(result, fmt.Sprintf("Cpu[%d].Manufacturer", n), string(cpu.Manufacturer))
-		setData(result, fmt.Sprintf("Cpu[%d].Model", n), cpu.Model)
-		setData(result, fmt.Sprintf("Cpu[%d].MaxSpeedMHz", n), fmt.Sprintf("%.2f", float64(cpu.MaxSpeedMHz)/1000))
 		setData(result, fmt.Sprintf("Cpu[%d].ProcessorType", n), string(cpu.ProcessorType))
-		setData(result, fmt.Sprintf("Cpu[%d].TotalCores", n), fmt.Sprintf("%d", cpu.TotalCores))
-		setData(result, fmt.Sprintf("Cpu[%d].TotalThreads", n), fmt.Sprintf("%d", cpu.TotalThreads))
 		setData(result, fmt.Sprintf("Cpu[%d].Health", n), string(cpu.Status.Health))
 		setData(result, fmt.Sprintf("Cpu[%d].State", n), string(cpu.Status.State))
+		// theses fields is dynamic, so we don't set them
+		//setData(result, fmt.Sprintf("Cpu[%d].TotalCores", n), fmt.Sprintf("%d", cpu.TotalCores))
+		//setData(result, fmt.Sprintf("Cpu[%d].TotalThreads", n), fmt.Sprintf("%d", cpu.TotalThreads))
+		//setData(result, fmt.Sprintf("Cpu[%d].MaxSpeedMHz", n), fmt.Sprintf("%.2f", float64(cpu.MaxSpeedMHz)/1000))
+		//setData(result, fmt.Sprintf("Cpu[%d].Architecture", n), string(cpu.ProcessorArchitecture))
+		//setData(result, fmt.Sprintf("Cpu[%d].Model", n), cpu.Model)
 	}
 
 	// memory info
-	setData(result, "MemoryTotalGiB", fmt.Sprintf("%f", system.MemorySummary.TotalSystemMemoryGiB))
+	setData(result, "MemoryTotalGiB", fmt.Sprintf("%.0f", system.MemorySummary.TotalSystemMemoryGiB))
 	setData(result, "MemoryStatus", string(system.MemorySummary.Status.Health))
 	mms, err := system.Memory()
 	if err != nil {
 		c.logger.Errorf("failed to get memory: %+v", err)
 		return nil, err
 	}
-	c.logger.Debugf("memory amount: %d", len(mms))
+	setData(result, "MemoryChipsAccount", fmt.Sprintf("%d", len(mms)))
+	//在内存条不变时，有时数组的顺序的变换，导致 后续 hoststatus 会做无意义的更新，暂时 取消这些信息
 	for n, mm := range mms {
 		//c.logger.Debugf("Memory[%d]: %+v", n, mm)
-		setData(result, fmt.Sprintf("Memory[%d].Name", n), string(mm.Name))
 		setData(result, fmt.Sprintf("Memory[%d].Manufacturer", n), string(mm.Manufacturer))
 		setData(result, fmt.Sprintf("Memory[%d].MemoryType", n), string(mm.MemoryType))
 		setData(result, fmt.Sprintf("Memory[%d].MemoryDeviceType", n), string(mm.MemoryDeviceType))
 		setData(result, fmt.Sprintf("Memory[%d].Manufacturer", n), string(mm.Manufacturer))
 		setData(result, fmt.Sprintf("Memory[%d].Model", n), string(mm.Model))
 		setData(result, fmt.Sprintf("Memory[%d].CapacityGiB", n), fmt.Sprintf("%.2f", float64(mm.CapacityMiB)/1024))
-		if len(mm.AllowedSpeedsMHz) > 0 {
-			setData(result, fmt.Sprintf("Memory[%d].AllowedSpeedsMHz", n), fmt.Sprintf("%d", mm.AllowedSpeedsMHz[0]))
-		}
-		setData(result, fmt.Sprintf("Memory[%d].OperatingSpeedMhz", n), fmt.Sprintf("%d", mm.OperatingSpeedMhz))
 		setData(result, fmt.Sprintf("Memory[%d].Health", n), string(mm.Status.Health))
 		setData(result, fmt.Sprintf("Memory[%d].State", n), string(mm.Status.State))
+		// theses fields is dynamic, so we don't set them
+		//setData(result, fmt.Sprintf("Memory[%d].Name", n), string(mm.Name))
+		//if len(mm.AllowedSpeedsMHz) > 0 {
+		//	setData(result, fmt.Sprintf("Memory[%d].AllowedSpeedsMHz", n), fmt.Sprintf("%d", mm.AllowedSpeedsMHz[0]))
+		//}
+		//setData(result, fmt.Sprintf("Memory[%d].OperatingSpeedMhz", n), fmt.Sprintf("%d", mm.OperatingSpeedMhz))
 	}
 
 	// storage info

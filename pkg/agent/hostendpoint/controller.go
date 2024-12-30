@@ -126,6 +126,10 @@ func (r *HostEndpointReconciler) handleHostEndpoint(ctx context.Context, hostEnd
 	hostStatus := &bmcv1beta1.HostStatus{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				bmcv1beta1.LabelIPAddr:     hostEndpoint.Spec.IPAddr,
+				bmcv1beta1.LabelClientMode: bmcv1beta1.HostTypeEndpoint,
+			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         bmcv1beta1.APIVersion,
