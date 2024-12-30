@@ -110,10 +110,11 @@ func (c *redfishClient) GetInfo() (map[string]string, error) {
 		setData(result, fmt.Sprintf("Cpu[%d].Model", n), cpu.Model)
 		setData(result, fmt.Sprintf("Cpu[%d].MaxSpeedMHz", n), fmt.Sprintf("%.2f", float64(cpu.MaxSpeedMHz)/1000))
 		setData(result, fmt.Sprintf("Cpu[%d].ProcessorType", n), string(cpu.ProcessorType))
-		setData(result, fmt.Sprintf("Cpu[%d].TotalCores", n), fmt.Sprintf("%d", cpu.TotalCores))
-		setData(result, fmt.Sprintf("Cpu[%d].TotalThreads", n), fmt.Sprintf("%d", cpu.TotalThreads))
 		setData(result, fmt.Sprintf("Cpu[%d].Health", n), string(cpu.Status.Health))
 		setData(result, fmt.Sprintf("Cpu[%d].State", n), string(cpu.Status.State))
+		// theses fields is dynamic, so we don't set them
+		//setData(result, fmt.Sprintf("Cpu[%d].TotalCores", n), fmt.Sprintf("%d", cpu.TotalCores))
+		//setData(result, fmt.Sprintf("Cpu[%d].TotalThreads", n), fmt.Sprintf("%d", cpu.TotalThreads))
 	}
 
 	// memory info

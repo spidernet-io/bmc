@@ -74,7 +74,8 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 	}
 
 	// 更新 HostStatus
-	if !compareHostStatus(updated.Status, existing.Status) {
+	if !compareHostStatus(updated.Status, existing.Status, log.Logger) {
+		log.Logger.Debugf("status changed, existing: %v, updated: %v", existing.Status, updated.Status)
 		updated.Status.LastUpdateTime = time.Now().UTC().Format(time.RFC3339)
 		if err := c.client.Status().Update(context.Background(), updated); err != nil {
 			log.Logger.Errorf("Failed to update status of HostStatus %s: %v", name, err)
@@ -195,7 +196,7 @@ func (c *hostStatusController) Reconcile(ctx context.Context, req ctrl.Request) 
 		zap.String("hoststatus", req.Name),
 	)
 
-	logger.Info("Reconciling HostStatus")
+	logger.Debugf("Reconciling HostStatus %s", req.Name)
 
 	// 获取 HostStatus
 	hostStatus := &bmcv1beta1.HostStatus{}
