@@ -118,7 +118,7 @@ func (c *redfishClient) GetInfo() (map[string]string, error) {
 	}
 
 	// memory info
-	setData(result, "MemoryTotalGiB", fmt.Sprintf("%d", system.MemorySummary.TotalSystemMemoryGiB))
+	setData(result, "MemoryTotalGiB", fmt.Sprintf("%.0f", system.MemorySummary.TotalSystemMemoryGiB))
 	setData(result, "MemoryStatus", string(system.MemorySummary.Status.Health))
 	mms, err := system.Memory()
 	if err != nil {
