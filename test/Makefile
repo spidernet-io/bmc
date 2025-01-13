@@ -35,6 +35,10 @@ installDepsRedfish:
 # Deploy application to kind cluster
 deploy:
 	@echo "Loading images into kind cluster..."
+	docker inspect $(CONTROLLER_IMAGE_REF) &>/dev/null || \
+		docker pull $(CONTROLLER_IMAGE_REF)
+	docker inspect $(AGENT_IMAGE_REF) &>/dev/null || \
+		docker pull $(AGENT_IMAGE_REF)
 	kind load docker-image $(CONTROLLER_IMAGE_REF) --name $(KIND_CLUSTER_NAME) && \
 	kind load docker-image $(AGENT_IMAGE_REF) --name $(KIND_CLUSTER_NAME)
 	@echo "Images loaded successfully"
