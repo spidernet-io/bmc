@@ -2,11 +2,22 @@
 
 ## steps
 
-1. make images
+1. 创建 kind 开发环境
+    ```
+    # 本地构建镜像部署环境
+    make images
+    make e2e
 
-2. make e2e
+    或者使用已经发行 ghcr 在线版本镜像
+    make e2e -e VERSION=v0.3.0
 
-3. make e2e-clean
+    或者使用已经发行国内在线版本镜像
+    make e2e -e VERSION=v0.3.0 -e REGISTRY=ghcr.m.daocloud.io/spidernet-io
+
+
+    ```
+
+2. 清理环境 `make e2e-clean`
 
 ## issue
 

@@ -282,6 +282,8 @@ NAME                             CLUSTERAGENT       HEALTHY   IPADDR          TY
 bmc-clusteragent-10-64-64-42     bmc-clusteragent   true      10.64.64.42     hostEndpoint    1m
 ```
 
+> 对于老的 BMC 系统，它的 tls 版本很低，证书套件很老，导致 gofish 无法正常建立链接
+
 ## 主机操作
 
 完成主机接入后，您可以对主机进行电源管理等操作，具体请参考 [主机操作](./action.md) 章节。
