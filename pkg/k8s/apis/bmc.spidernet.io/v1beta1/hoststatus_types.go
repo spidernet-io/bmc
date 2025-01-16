@@ -39,8 +39,8 @@ type HostStatusStatus struct {
 type BasicInfo struct {
 	Type            string `json:"type"`
 	IpAddr          string `json:"ipAddr"`
-	SecretName      string `json:"secretName,omitempty"`
-	SecretNamespace string `json:"secretNamespace,omitempty"`
+	SecretName      string `json:"secretName"`
+	SecretNamespace string `json:"secretNamespace"`
 	Https           bool   `json:"https"`
 	Port            int32  `json:"port"`
 	Mac             string `json:"mac,omitempty"`

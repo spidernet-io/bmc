@@ -20,6 +20,7 @@ import (
 	"github.com/spidernet-io/bmc/pkg/agent/hostendpoint"
 	"github.com/spidernet-io/bmc/pkg/agent/hostoperation"
 	"github.com/spidernet-io/bmc/pkg/agent/hoststatus"
+	secretcontroller "github.com/spidernet-io/bmc/pkg/agent/secret"
 	"github.com/spidernet-io/bmc/pkg/dhcpserver"
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	crdclientset "github.com/spidernet-io/bmc/pkg/k8s/client/clientset/versioned/typed/bmc.spidernet.io/v1beta1"
@@ -89,6 +90,17 @@ func main() {
 
 	if err = hostStatusCtrl.SetupWithManager(mgr); err != nil {
 		log.Logger.Errorf("Unable to create hoststatus controller: %v", err)
+		os.Exit(1)
+	}
+
+	// initialize secret controller
+	secretCtrl, err := secretcontroller.NewSecretReconciler(mgr, agentConfig, hostStatusCtrl)
+	if err != nil {
+		log.Logger.Errorf("Failed to create secret controller: %v", err)
+		os.Exit(1)
+	}
+	if err = secretCtrl.SetupWithManager(mgr); err != nil {
+		log.Logger.Errorf("Unable to create secret controller: %v", err)
 		os.Exit(1)
 	}
 

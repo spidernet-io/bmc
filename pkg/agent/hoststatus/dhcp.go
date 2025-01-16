@@ -149,6 +149,12 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 		},
 		Info: map[string]string{},
 	}
+	if c.config.AgentObjSpec.Endpoint.SecretName != "" {
+		hostStatus.Status.Basic.SecretName = c.config.AgentObjSpec.Endpoint.SecretName
+	}
+	if c.config.AgentObjSpec.Endpoint.SecretNamespace != "" {
+		hostStatus.Status.Basic.SecretNamespace = c.config.AgentObjSpec.Endpoint.SecretNamespace
+	}
 
 	if err := c.client.Status().Update(context.Background(), hostStatus); err != nil {
 		log.Logger.Errorf("Failed to update status of HostStatus %s: %v", name, err)

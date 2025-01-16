@@ -8,6 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/spidernet-io/bmc/pkg/agent/config"
+	hoststatusdata "github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
 	"github.com/spidernet-io/bmc/pkg/dhcpserver/types"
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
 	"github.com/spidernet-io/bmc/pkg/log"
@@ -17,6 +18,7 @@ type HostStatusController interface {
 	GetDHCPEventChan() (chan<- types.ClientInfo, chan<- types.ClientInfo)
 	Stop()
 	SetupWithManager(mgr ctrl.Manager) error
+	UpdateSecret(string, string, string, string)
 }
 
 type hostStatusController struct {
@@ -67,4 +69,23 @@ func (c *hostStatusController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bmcv1beta1.HostStatus{}).
 		Complete(c)
+}
+
+func (c *hostStatusController) UpdateSecret(secretName, secretNamespace, username, password string) {
+	if secretName == c.config.AgentObjSpec.Endpoint.SecretName && secretNamespace == c.config.AgentObjSpec.Endpoint.SecretNamespace {
+		log.Logger.Info("update default secret")
+		// update the default secret
+		c.config.Username = username
+		c.config.Password = password
+	}
+
+	log.Logger.Debugf("updating secet in cache for secret %s/%s", secretNamespace, secretName)
+	changedHosts := hoststatusdata.HostCacheDatabase.UpdateSecet(secretName, secretNamespace, username, password)
+	for _, name := range changedHosts {
+		log.Logger.Infof("update hostStatus %s after secret is changed", name)
+		if err := c.UpdateHostStatusInfoWrapper(name); err != nil {
+			log.Logger.Errorf("Failed to update host status: %v", err)
+		}
+	}
+
 }

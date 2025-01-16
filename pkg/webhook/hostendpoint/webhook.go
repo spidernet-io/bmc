@@ -14,6 +14,7 @@ import (
 	"github.com/spidernet-io/bmc/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 )
+// +kubebuilder:webhook:path=/validate-bmc-spidernet-io-v1beta1-hostendpoint,mutating=true,failurePolicy=fail,sideEffects=None,groups=bmc.spidernet.io,resources=hostendpoints,verbs=create;update,versions=v1beta1,name=vhostendpoint.kb.io,admissionReviewVersions=v1
 
 // HostEndpointWebhook validates HostEndpoint resources
 type HostEndpointWebhook struct {
@@ -38,6 +39,8 @@ func (w *HostEndpointWebhook) Default(ctx context.Context, obj runtime.Object) e
 
 	log.Logger.Infof("Setting initial values for nil fields in HostEndpoint %s", hostEndpoint.Name)
 
+	var clusterAgent *bmcv1beta1.ClusterAgent
+
 	// Set default values
 	if hostEndpoint.Spec.ClusterAgent == "" {
 		// Try to set it to the only clusterAgent if there's only one
@@ -46,6 +49,7 @@ func (w *HostEndpointWebhook) Default(ctx context.Context, obj runtime.Object) e
 			return fmt.Errorf("failed to list clusterAgents: %v", err)
 		}
 		if len(clusterAgentList.Items) == 1 {
+			clusterAgent = &clusterAgentList.Items[0]
 			hostEndpoint.Spec.ClusterAgent = clusterAgentList.Items[0].Name
 			log.Logger.Infof("Setting default clusterAgent to %s for HostEndpoint %s", hostEndpoint.Spec.ClusterAgent, hostEndpoint.Name)
 		}
@@ -63,12 +67,21 @@ func (w *HostEndpointWebhook) Default(ctx context.Context, obj runtime.Object) e
 		log.Logger.Infof("Setting default Port to 443 for HostEndpoint %s", hostEndpoint.Name)
 	}
 
-	if hostEndpoint.Spec.SecretName == "" {
-		hostEndpoint.Spec.SecretName = ""
-	}
-
-	if hostEndpoint.Spec.SecretNamespace == "" {
-		hostEndpoint.Spec.SecretNamespace = ""
+	if (hostEndpoint.Spec.SecretName == nil || *hostEndpoint.Spec.SecretName == "") && (hostEndpoint.Spec.SecretNamespace == nil || *hostEndpoint.Spec.SecretNamespace == "") {
+		var name, ns string
+		if clusterAgent != nil {
+			name = clusterAgent.Spec.Endpoint.SecretName
+			ns = clusterAgent.Spec.Endpoint.SecretNamespace
+		} else {
+			err := w.Client.Get(ctx, client.ObjectKey{Name: hostEndpoint.Spec.ClusterAgent}, clusterAgent)
+			if err != nil {
+				return fmt.Errorf("failed to get clusterAgent: %v", err)
+			}
+			name = clusterAgent.Spec.Endpoint.SecretName
+			ns = clusterAgent.Spec.Endpoint.SecretNamespace
+		}
+		hostEndpoint.Spec.SecretName = &name
+		hostEndpoint.Spec.SecretNamespace = &ns
 	}
 
 	return nil
@@ -162,13 +175,13 @@ func (w *HostEndpointWebhook) validateHostEndpoint(ctx context.Context, hostEndp
 	}
 
 	// Validate secret if both secretName and secretNamespace are provided
-	if hostEndpoint.Spec.SecretName != "" && hostEndpoint.Spec.SecretNamespace != "" {
+	if (hostEndpoint.Spec.SecretName != nil && *hostEndpoint.Spec.SecretName != "") && (hostEndpoint.Spec.SecretNamespace != nil && *hostEndpoint.Spec.SecretNamespace != "") {
 		secret := &corev1.Secret{}
 		if err := w.Client.Get(ctx, client.ObjectKey{
-			Name:      hostEndpoint.Spec.SecretName,
-			Namespace: hostEndpoint.Spec.SecretNamespace,
+			Name:      *hostEndpoint.Spec.SecretName,
+			Namespace: *hostEndpoint.Spec.SecretNamespace,
 		}, secret); err != nil {
-			return fmt.Errorf("secret %s/%s not found", hostEndpoint.Spec.SecretNamespace, hostEndpoint.Spec.SecretName)
+			return fmt.Errorf("secret %s/%s not found", *hostEndpoint.Spec.SecretNamespace, *hostEndpoint.Spec.SecretName)
 		}
 
 		if _, ok := secret.Data["username"]; !ok {
@@ -178,11 +191,19 @@ func (w *HostEndpointWebhook) validateHostEndpoint(ctx context.Context, hostEndp
 			return fmt.Errorf("secret must contain password key")
 		}
 	}
-	if (hostEndpoint.Spec.SecretName != "" && hostEndpoint.Spec.SecretNamespace == "") || (hostEndpoint.Spec.SecretName == "" && hostEndpoint.Spec.SecretNamespace != "") {
+
+	setName := false
+	setNs := false
+	if hostEndpoint.Spec.SecretName != nil && *hostEndpoint.Spec.SecretName != "" {
+		setName = true
+	}
+	if hostEndpoint.Spec.SecretNamespace != nil && *hostEndpoint.Spec.SecretNamespace != "" {
+		setNs = true
+	}
+	if (setName && !setNs) || (!setName && setNs) {
 		return fmt.Errorf("secretName and secretNamespace must be both set or both unset")
 	}
 
 	return nil
 }
 
-// +kubebuilder:webhook:path=/validate-bmc-spidernet-io-v1beta1-hostendpoint,mutating=true,failurePolicy=fail,sideEffects=None,groups=bmc.spidernet.io,resources=hostendpoints,verbs=create;update,versions=v1beta1,name=vhostendpoint.kb.io,admissionReviewVersions=v1

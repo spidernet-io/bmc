@@ -31,11 +31,11 @@ type HostEndpointSpec struct {
 
 	// SecretName is the name of the secret containing credentials
 	// +optional
-	SecretName string `json:"secretName,omitempty"`
+	SecretName *string `json:"secretName,omitempty"`
 
 	// SecretNamespace is the namespace of the secret containing credentials
 	// +optional
-	SecretNamespace string `json:"secretNamespace,omitempty"`
+	SecretNamespace *string `json:"secretNamespace,omitempty"`
 
 	// HTTPS specifies whether to use HTTPS for communication
 	// +optional
