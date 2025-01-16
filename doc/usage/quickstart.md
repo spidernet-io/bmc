@@ -283,6 +283,8 @@ bmc-clusteragent-10-64-64-42     bmc-clusteragent   true      10.64.64.42     ho
 ```
 
 > 对于老的 BMC 系统，它的 tls 版本很低，证书套件很老，导致 gofish 无法正常建立链接
+> 目前版本，如果更新了 secret 账户和密码，需要手动重启 agent ，或者重建 HostEndpoint，才会生效
+> 目前版本，只支持新建或者删除 HostEndpoint，不支持编辑
 
 ## 主机操作
 

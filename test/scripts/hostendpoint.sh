@@ -1,6 +1,6 @@
 NAME=gpu
-USERNAME=ADMIN
-PASSWORD=NSHETVTLJA
+USERNAME=daocloud
+PASSWORD=DaoCloud..
 IP_ADDR=10.64.64.94
 cat <<EOF | kubectl apply -f -
 apiVersion: v1

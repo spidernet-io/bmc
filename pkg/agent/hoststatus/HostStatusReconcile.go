@@ -32,7 +32,14 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 	defer hostStatusLock.Unlock()
 
 	// 创建 redfish 客户端
-	client := redfish.NewClient(*d, log.Logger)
+	var healthy bool
+	client, err1 := redfish.NewClient(*d, log.Logger)
+	if err1 != nil {
+		log.Logger.Errorf("Failed to create redfish client for HostStatus %s: %v", name, err1)
+		healthy = false
+	} else {
+		healthy = true
+	}
 
 	protocol := "http"
 	if d.Info.Https {
@@ -54,7 +61,6 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 	updated := existing.DeepCopy()
 
 	// 检查健康状态
-	healthy := client.Health()
 	updated.Status.Healthy = healthy
 	if healthy {
 		infoData, err := client.GetInfo()
