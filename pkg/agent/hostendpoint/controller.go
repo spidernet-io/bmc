@@ -94,8 +94,8 @@ func (r *HostEndpointReconciler) handleHostEndpoint(ctx context.Context, hostEnd
 		updated.Status.Basic = bmcv1beta1.BasicInfo{
 			Type:            bmcv1beta1.HostTypeEndpoint,
 			IpAddr:          hostEndpoint.Spec.IPAddr,
-			SecretName:      hostEndpoint.Spec.SecretName,
-			SecretNamespace: hostEndpoint.Spec.SecretNamespace,
+			SecretName:      *hostEndpoint.Spec.SecretName,
+			SecretNamespace: *hostEndpoint.Spec.SecretNamespace,
 			Https:           *hostEndpoint.Spec.HTTPS,
 			Port:            *hostEndpoint.Spec.Port,
 		}
@@ -170,8 +170,8 @@ func (r *HostEndpointReconciler) handleHostEndpoint(ctx context.Context, hostEnd
 		Basic: bmcv1beta1.BasicInfo{
 			Type:            bmcv1beta1.HostTypeEndpoint,
 			IpAddr:          hostEndpoint.Spec.IPAddr,
-			SecretName:      hostEndpoint.Spec.SecretName,
-			SecretNamespace: hostEndpoint.Spec.SecretNamespace,
+			SecretName:      *hostEndpoint.Spec.SecretName,
+			SecretNamespace: *hostEndpoint.Spec.SecretNamespace,
 			Https:           *hostEndpoint.Spec.HTTPS,
 			Port:            *hostEndpoint.Spec.Port,
 		},
@@ -195,8 +195,8 @@ func (r *HostEndpointReconciler) handleHostEndpoint(ctx context.Context, hostEnd
 // specEqual checks if the HostStatus basic info matches the HostEndpoint spec
 func specEqual(basic bmcv1beta1.BasicInfo, spec bmcv1beta1.HostEndpointSpec) bool {
 	return basic.IpAddr == spec.IPAddr &&
-		basic.SecretName == spec.SecretName &&
-		basic.SecretNamespace == spec.SecretNamespace &&
+		basic.SecretName == *spec.SecretName &&
+		basic.SecretNamespace == *spec.SecretNamespace &&
 		basic.Https == *spec.HTTPS &&
 		basic.Port == *spec.Port
 }

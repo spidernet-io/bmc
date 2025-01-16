@@ -116,6 +116,7 @@ func (c *hostStatusController) UpdateHostStatusInfoWrapper(name string) error {
 	}
 
 	for item, t := range syncData {
+		log.Logger.Debugf("updating status of the hostStatus %s", item)
 		if updated, err := c.UpdateHostStatusInfo(item, &t); err != nil {
 			log.Logger.Errorf("failed to update HostStatus %s %s: %v", item, modeinfo, err)
 		} else {

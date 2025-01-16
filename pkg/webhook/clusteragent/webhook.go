@@ -17,6 +17,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// +kubebuilder:webhook:path=/validate-bmc-spidernet-io-v1beta1-clusteragent,mutating=true,failurePolicy=fail,sideEffects=None,groups=bmc.spidernet.io,resources=clusteragents,verbs=create;update,versions=v1beta1,name=vclusteragent.kb.io,admissionReviewVersions=v1
+
 // ClusterAgentWebhook validates ClusterAgent resources
 type ClusterAgentWebhook struct {
 	Client client.Client
@@ -93,7 +95,7 @@ func (w *ClusterAgentWebhook) Default(ctx context.Context, obj runtime.Object) e
 		clusterAgent.Spec.Feature.DhcpServerConfig = &bmcv1beta1.DhcpServerConfig{
 			EnableDhcpDiscovery: false,
 			EnableBindDhcpIP:    false,
-			EnableBindStaticIP:   false,
+			EnableBindStaticIP:  false,
 			DhcpServerInterface: "",
 			Subnet:              "",
 			IpRange:             "",
@@ -295,5 +297,3 @@ func extractCIDRMask(cidr string) (string, error) {
 	}
 	return parts[1], nil
 }
-
-// +kubebuilder:webhook:path=/validate-bmc-spidernet-io-v1beta1-clusteragent,mutating=true,failurePolicy=fail,sideEffects=None,groups=bmc.spidernet.io,resources=clusteragents,verbs=create;update,versions=v1beta1,name=vclusteragent.kb.io,admissionReviewVersions=v1
