@@ -3,20 +3,7 @@ package redfish
 import (
 	"fmt"
 	"strings"
-
-	"github.com/stmcginnis/gofish"
 )
-
-// Health 实现健康检查方法
-func (c *redfishClient) Health() bool {
-	// 创建 gofish 客户端
-	client, err := gofish.Connect(c.config)
-	if err != nil {
-		return false
-	}
-	defer client.Logout()
-	return true
-}
 
 func setData(result map[string]string, key, value string) {
 	if len(value) == 0 {
@@ -37,16 +24,8 @@ func (c *redfishClient) GetInfo() (map[string]string, error) {
 
 	result := map[string]string{}
 
-	// 创建 gofish 客户端
-	client, err := gofish.Connect(c.config)
-	if err != nil {
-		c.logger.Errorf("failed to connect: %+v", err)
-		return nil, err
-	}
-	defer client.Logout()
-
 	// Attached the client to service root
-	service := client.Service
+	service := c.client.Service
 
 	// Query the managers for bmc
 	managers, err := service.Managers()

@@ -84,23 +84,31 @@ func (r *HostOperationController) Reconcile(ctx context.Context, req ctrl.Reques
 		logger.Debugf("get connect config %s from cache: %+v", hostOp.Spec.HostStatusName, d)
 
 		var err error
-		switch hostOp.Spec.Action {
-		case bmcv1beta1.BootCmdOn:
-			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
-		case bmcv1beta1.BootCmdForceOn:
-			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
-		case bmcv1beta1.BootCmdForceOff:
-			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
-		case bmcv1beta1.BootCmdGracefulShutdown:
-			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
-		case bmcv1beta1.BootCmdForceRestart:
-			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
-		case bmcv1beta1.BootCmdGracefulRestart:
-			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
-		case bmcv1beta1.BootCmdResetPxeOnce:
-			err = redfish.NewClient(*d, logger).Power(hostOp.Spec.Action)
-		default:
-			err = fmt.Errorf("invalid action %s", hostOp.Spec.Action)
+		c, terr := redfish.NewClient(*d, logger)
+		if terr != nil {
+			err = terr
+			logger.Errorf("Failed to operate %s: %v", hostOp.Spec.HostStatusName, err)
+			hostOp.Status.Status = bmcv1beta1.HostOperationStatusFailed
+			hostOp.Status.Message = err.Error()
+		} else {
+			switch hostOp.Spec.Action {
+			case bmcv1beta1.BootCmdOn:
+				err = c.Power(hostOp.Spec.Action)
+			case bmcv1beta1.BootCmdForceOn:
+				err = c.Power(hostOp.Spec.Action)
+			case bmcv1beta1.BootCmdForceOff:
+				err = c.Power(hostOp.Spec.Action)
+			case bmcv1beta1.BootCmdGracefulShutdown:
+				err = c.Power(hostOp.Spec.Action)
+			case bmcv1beta1.BootCmdForceRestart:
+				err = c.Power(hostOp.Spec.Action)
+			case bmcv1beta1.BootCmdGracefulRestart:
+				err = c.Power(hostOp.Spec.Action)
+			case bmcv1beta1.BootCmdResetPxeOnce:
+				err = c.Power(hostOp.Spec.Action)
+			default:
+				err = fmt.Errorf("invalid action %s", hostOp.Spec.Action)
+			}
 		}
 
 		hostOp.Status.LastUpdateTime = time.Now().UTC().Format(time.RFC3339)

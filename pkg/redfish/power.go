@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	bmcv1beta1 "github.com/spidernet-io/bmc/pkg/k8s/apis/bmc.spidernet.io/v1beta1"
-	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/redfish"
 )
 
@@ -13,16 +12,8 @@ import (
 
 func (c *redfishClient) Power(bootCmd string) error {
 
-	// 创建 gofish 客户端
-	client, err := gofish.Connect(c.config)
-	if err != nil {
-		c.logger.Errorf("failed to connect: %+v", err)
-		return err
-	}
-	defer client.Logout()
-
 	// Attached the client to service root
-	service := client.Service
+	service := c.client.Service
 	// Query the computer systems
 	ss, err := service.Systems()
 	if err != nil {
