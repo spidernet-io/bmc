@@ -51,15 +51,7 @@ func (c *redfishClient) GetLog() ([]*redfish.LogEntry, error) {
 			return nil, err
 		} else if len(entries) > 0 {
 			c.logger.Debugf("log service entries amount: %d", len(entries))
-			for _, u := range entries {
-				//c.logger.Debugf("log service entries[%d]: %+v", m, *u)
-				// c.logger.Debugf("log service entries[%d]: %+v", m, u.Created)
-				// c.logger.Debugf("log service entries[%d]: %+v", m, u.Message)
-				// c.logger.Debugf("log service entries[%d]: %+v", m, u.Severity)
-				// c.logger.Debugf("log service entries[%d]: %+v", m, u.OemSensorType)
-				// c.logger.Debugf("log service entries[%d]: %+v", m, u.MessageID)
-				result = append(result, u)
-			}
+			result = append(result, entries...)
 		}
 	}
 
