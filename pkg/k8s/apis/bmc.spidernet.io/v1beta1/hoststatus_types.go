@@ -34,6 +34,20 @@ type HostStatusStatus struct {
 	LastUpdateTime string            `json:"lastUpdateTime"`
 	Basic          BasicInfo         `json:"basic"`
 	Info           map[string]string `json:"info"`
+	Log            LogStruct         `json:"log"`
+}
+
+type LogStruct struct {
+	// +kubebuilder:validation:Required
+	TotalLogAccount   int32 `json:"totalLogAccount"`
+	WarningLogAccount int32 `json:"warningLogAccount"`
+	// +optional
+	LastestLog *LogEntry `json:"lastestLog,omitempty"`
+}
+
+type LogEntry struct {
+	Time    string `json:"time"`
+	Message string `json:"message"`
 }
 
 type BasicInfo struct {

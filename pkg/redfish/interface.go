@@ -2,6 +2,7 @@ package redfish
 
 import (
 	"fmt"
+	"github.com/stmcginnis/gofish/redfish"
 	"reflect"
 
 	"github.com/spidernet-io/bmc/pkg/agent/hoststatus/data"
@@ -13,6 +14,7 @@ import (
 type RefishClient interface {
 	Power(string) error
 	GetInfo() (map[string]string, error)
+	GetLog() ([]*redfish.LogEntry, error)
 }
 
 // redfishClient 实现了 Client 接口

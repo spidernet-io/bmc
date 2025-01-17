@@ -148,6 +148,11 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 			ActiveDhcpClient: true,
 		},
 		Info: map[string]string{},
+		Log: bmcv1beta1.LogStruct{
+			TotalLogAccount:   0,
+			WarningLogAccount: 0,
+			LastestLog:        nil,
+		},
 	}
 	if c.config.AgentObjSpec.Endpoint.SecretName != "" {
 		hostStatus.Status.Basic.SecretName = c.config.AgentObjSpec.Endpoint.SecretName
