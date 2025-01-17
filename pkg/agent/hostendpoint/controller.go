@@ -176,6 +176,11 @@ func (r *HostEndpointReconciler) handleHostEndpoint(ctx context.Context, hostEnd
 			Port:            *hostEndpoint.Spec.Port,
 		},
 		Info: map[string]string{},
+		Log: bmcv1beta1.LogStruct{
+			TotalLogAccount:   0,
+			WarningLogAccount: 0,
+			LastestLog:        nil,
+		},
 	}
 
 	if err := r.client.Status().Update(ctx, hostStatus); err != nil {

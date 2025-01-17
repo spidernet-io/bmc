@@ -29,6 +29,8 @@ type AgentConfig struct {
 	Password string
 	// 主机状态更新间隔（秒）
 	HostStatusUpdateInterval int
+	// pod namespace
+	PodNamespace string
 }
 
 // ValidateEndpointConfig validates the endpoint configuration
@@ -175,6 +177,8 @@ func LoadAgentConfig(k8sClient *kubernetes.Clientset) (*AgentConfig, error) {
 		return nil, fmt.Errorf("CLUSTERAGENT_NAME environment variable not set")
 	}
 
+	ns := os.Getenv("POD_NAMESPACE")
+
 	updateInterval := 60 // 默认 60 秒
 	intervalStr := os.Getenv("HOST_STATUS_UPDATE_INTERVAL")
 	if intervalStr == "" {
@@ -225,6 +229,7 @@ func LoadAgentConfig(k8sClient *kubernetes.Clientset) (*AgentConfig, error) {
 		ClusterAgentName:         agentName,
 		AgentObjSpec:             clusterAgent.Spec,
 		HostStatusUpdateInterval: updateInterval,
+		PodNamespace:             ns,
 	}
 
 	// Validate endpoint configuration

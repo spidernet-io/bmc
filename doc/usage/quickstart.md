@@ -308,3 +308,25 @@ test-hostendpoint                bmc-clusteragent   true      192.168.0.50    ho
     1. 进入 agent pod 中，查看 DHCP server 的实时 IP 分配文件 `/var/lib/dhcp/bmc-clusteragent-dhcpd.leases`，确认和删除其中期望解除绑定的 IP 地址
     2. `kubectl get hoststatus -l status.basic.ipAddr=<IP>` 查看 hoststatus 对象，确认其中的 IP 和 MAC 地址符合删除预期，然后手动删除对应的 hoststatus 对象 `kubectl delete hoststatus -l status.basic.ipAddr=192.168.0.101`
     3. 后端会自动更新 DHCP server 的配置，实现 IP 和 MAC 地址的解绑（可进入 agent pod 中，查看文件 `/etc/dhcp/dhcpd.conf` 确认）
+
+3. 查看 BMC 主机的日志
+
+```bash
+# 获取所有 BMC 主机的日志
+kubectl get events -n bmc --field-selector reason=BMCLogEntry
+
+# 获取指定 BMC 主机的日志
+kubectl get events -n bmc --field-selector reason=BMCLogEntry,involvedObject.name=${HoststatusName}
+
+# 获取指定 BMC 主机的日志统计
+kubectl get hoststatus ${HoststatusName} -n bmc -o jsonpath='{.status.log}' | jq .
+  {
+    "lastestLog": {
+      "message": "[][2018-08-31T13:33:54+00:00][]: [ PS1 Status ] Power Supply Failure",
+      "time": "2018-08-31T13:33:54+00:00"
+    },
+    "totalLogAccount": 67,
+    "warningLogAccount": 67
+  }
+
+```

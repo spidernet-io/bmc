@@ -12,7 +12,11 @@ import (
 	//"github.com/spidernet-io/bmc/pkg/lock"
 	"github.com/spidernet-io/bmc/pkg/log"
 	"github.com/spidernet-io/bmc/pkg/redfish"
+
+	gofishredfish "github.com/stmcginnis/gofish/redfish"
+
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,6 +27,58 @@ import (
 var hostStatusLock = &sync.Mutex{}
 
 // ------------------------------  update the spec.info of the hoststatus
+
+// GenerateEvents creates Kubernetes events from Redfish log entries and returns the latest message and count
+func (c *hostStatusController) GenerateEvents(logEntrys []*gofishredfish.LogEntry, hostStatusName string, lastLogTime string) (newLastestTime, newLastestMsg string, totalMsgCount, warningMsgCount, newLogAccount int) {
+	totalMsgCount = 0
+	warningMsgCount = 0
+	newLogAccount = 0
+	newLastestTime = ""
+	newLastestMsg = ""
+
+	if len(logEntrys) == 0 {
+		return
+	}
+
+	totalMsgCount = len(logEntrys)
+	for m, entry := range logEntrys {
+		//log.Logger.Debugf("log service entries[%d] timestamp: %+v", m, entry.Created)
+		//log.Logger.Debugf("log service entries[%d] severity: %+v", m, entry.Severity)
+		//log.Logger.Debugf("log service entries[%d] oemSensorType: %+v", m, entry.OemSensorType)
+		//log.Logger.Debugf("log service entries[%d] message: %+v", m, entry.Message)
+
+		msg := fmt.Sprintf("[%s][%s]: %s %s", entry.Created, entry.Severity, entry.OemSensorType, entry.Message)
+
+		ty := corev1.EventTypeNormal
+		if entry.Severity != gofishredfish.OKEventSeverity {
+			ty = corev1.EventTypeWarning
+			warningMsgCount++
+		}
+
+		// 所有的新日志，生成 event
+		if entry.Created != lastLogTime {
+			newLogAccount++
+			log.Logger.Infof("find new log for hostStatus %s: %s", hostStatusName, msg)
+
+			// 确认是否有新日志了
+			if m == 0 {
+				newLastestTime = entry.Created
+				newLastestMsg = msg
+			}
+
+			// Create event
+			t := &corev1.ObjectReference{
+				Kind:       bmcv1beta1.KindHostStatus,
+				Name:       hostStatusName,
+				Namespace:  c.config.PodNamespace,
+				APIVersion: bmcv1beta1.APIVersion,
+			}
+			c.recorder.Event(t, ty, "BMCLogEntry", msg)
+
+		}
+	}
+	return
+}
 
 // this is called by UpdateHostStatusAtInterval and UpdateHostStatusWrapper
 func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusdata.HostConnectCon) (bool, error) {
@@ -77,6 +133,29 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 	}
 	if updated.Status.Healthy != existing.Status.Healthy {
 		log.Logger.Infof("HostStatus %s change from %v to %v , update status", name, existing.Status.Healthy, healthy)
+	}
+
+	// 获取日志
+	if healthy {
+		logEntrys, err := client.GetLog()
+		if err != nil {
+			log.Logger.Errorf("Failed to get logs of HostStatus %s: %v", name, err)
+		} else {
+			lastLogTime := ""
+			if updated.Status.Log.LastestLog != nil {
+				lastLogTime = updated.Status.Log.LastestLog.Time
+			}
+			newLastestTime, newLastestMsg, totalMsgCount, warningMsgCount, newLogAccount := c.GenerateEvents(logEntrys, name, lastLogTime)
+			if newLastestTime != "" {
+				updated.Status.Log.TotalLogAccount = int32(totalMsgCount)
+				updated.Status.Log.WarningLogAccount = int32(warningMsgCount)
+				updated.Status.Log.LastestLog = &bmcv1beta1.LogEntry{
+					Time:    newLastestTime,
+					Message: newLastestMsg,
+				}
+				log.Logger.Infof("find %d new logs for hostStatus %s", newLogAccount, name)
+			}
+		}
 	}
 
 	// 更新 HostStatus

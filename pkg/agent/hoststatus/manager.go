@@ -4,6 +4,9 @@ import (
 	"sync"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -29,10 +32,17 @@ type hostStatusController struct {
 	deleteChan chan types.ClientInfo
 	stopCh     chan struct{}
 	wg         sync.WaitGroup
+	recorder   record.EventRecorder
 }
 
 func NewHostStatusController(kubeClient kubernetes.Interface, config *config.AgentConfig, mgr ctrl.Manager) HostStatusController {
 	log.Logger.Debugf("Creating new HostStatus controller for cluster agent: %s", config.ClusterAgentName)
+	
+	// Create event recorder
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	recorder := eventBroadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: "bmc-controller"})
+
 	controller := &hostStatusController{
 		client:     mgr.GetClient(),
 		kubeClient: kubeClient,
@@ -40,6 +50,7 @@ func NewHostStatusController(kubeClient kubernetes.Interface, config *config.Age
 		addChan:    make(chan types.ClientInfo),
 		deleteChan: make(chan types.ClientInfo),
 		stopCh:     make(chan struct{}),
+		recorder:   recorder,
 	}
 
 	log.Logger.Debugf("HostStatus controller created successfully")
