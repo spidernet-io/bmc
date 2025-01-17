@@ -2,8 +2,26 @@ apiVersion: v1
 entries:
   bmc-operator:
   - apiVersion: v2
+    appVersion: 0.4.0
+    created: "2025-01-17T11:24:35.669313525Z"
+    description: A Helm chart for BMC Operator
+    digest: 497a5ca5688c7bbd1dc2e4ae0046070fbe973a3afd686c080531260c713e337d
+    keywords:
+    - kubernetes
+    - operator
+    - bmc
+    - server
+    maintainers:
+    - name: spidernet-io
+      url: https://github.com/spidernet-io/bmc
+    name: bmc-operator
+    type: application
+    urls:
+    - https://spidernet-io.github.io/bmc/charts/bmc-operator-0.4.0.tgz
+    version: 0.4.0
+  - apiVersion: v2
     appVersion: 0.3.1
-    created: "2025-01-16T09:38:23.719811753Z"
+    created: "2025-01-17T11:24:35.668680213Z"
     description: A Helm chart for BMC Operator
     digest: dea989b195c19c30fc9bb633ac977dc005a7dfd3915de669daab3da7a16bb728
     keywords:
@@ -21,7 +39,7 @@ entries:
     version: 0.3.1
   - apiVersion: v2
     appVersion: 0.3.0
-    created: "2025-01-16T09:38:23.718984414Z"
+    created: "2025-01-17T11:24:35.668040379Z"
     description: A Helm chart for BMC Operator
     digest: 9b4495f86023a209174cad55477132ee572fb5340ce40653035ab0e7f93e67d9
     keywords:
@@ -39,7 +57,7 @@ entries:
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.2.0
-    created: "2025-01-16T09:38:23.718321252Z"
+    created: "2025-01-17T11:24:35.667422386Z"
     description: A Helm chart for BMC Operator
     digest: 30d3259a2cb4aecdf228c091c5c079f6608e76db8165b487de581167805a6550
     keywords:
@@ -57,7 +75,7 @@ entries:
     version: 0.2.0
   - apiVersion: v2
     appVersion: 0.1.0
-    created: "2025-01-16T09:38:23.717654263Z"
+    created: "2025-01-17T11:24:35.66674913Z"
     description: A Helm chart for BMC Operator
     digest: 66a806ee6516dc73ff9e7113a4f8239f7b27a8a9406ebc3d8b9eacbd9b38b329
     keywords:
@@ -73,4 +91,4 @@ entries:
     urls:
     - https://spidernet-io.github.io/bmc/charts/bmc-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2025-01-16T09:38:23.716809772Z"
+generated: "2025-01-17T11:24:35.665937566Z"
