@@ -50,7 +50,7 @@ func (c *hostStatusController) GenerateEvents(logEntrys []*gofishredfish.LogEntr
 		msg := fmt.Sprintf("[%s][%s]: %s %s", entry.Created, entry.Severity, entry.OemSensorType, entry.Message)
 
 		ty := corev1.EventTypeNormal
-		if entry.Severity != gofishredfish.OKEventSeverity {
+		if entry.Severity != gofishredfish.OKEventSeverity && entry.Severity != "" {
 			ty = corev1.EventTypeWarning
 			warningMsgCount++
 		}
