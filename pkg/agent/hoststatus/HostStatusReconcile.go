@@ -29,12 +29,14 @@ var hostStatusLock = &sync.Mutex{}
 // ------------------------------  update the spec.info of the hoststatus
 
 // GenerateEvents creates Kubernetes events from Redfish log entries and returns the latest message and count
-func (c *hostStatusController) GenerateEvents(logEntrys []*gofishredfish.LogEntry, hostStatusName string, lastLogTime string) (newLastestTime, newLastestMsg string, totalMsgCount, warningMsgCount, newLogAccount int) {
+func (c *hostStatusController) GenerateEvents(logEntrys []*gofishredfish.LogEntry, hostStatusName string, lastLogTime string) (newLastestTime, newLastestMsg, newLastestWarningTime, newLastestWarningMsg string, totalMsgCount, warningMsgCount, newLogAccount int) {
 	totalMsgCount = 0
 	warningMsgCount = 0
 	newLogAccount = 0
 	newLastestTime = ""
 	newLastestMsg = ""
+	newLastestWarningTime = ""
+	newLastestWarningMsg = ""
 
 	if len(logEntrys) == 0 {
 		return
@@ -52,6 +54,10 @@ func (c *hostStatusController) GenerateEvents(logEntrys []*gofishredfish.LogEntr
 		ty := corev1.EventTypeNormal
 		if entry.Severity != gofishredfish.OKEventSeverity && entry.Severity != "" {
 			ty = corev1.EventTypeWarning
+			if newLastestWarningMsg == "" {
+				newLastestWarningTime = entry.Created
+				newLastestWarningMsg = msg
+			}
 			warningMsgCount++
 		}
 
@@ -145,13 +151,17 @@ func (c *hostStatusController) UpdateHostStatusInfo(name string, d *hoststatusda
 			if updated.Status.Log.LastestLog != nil {
 				lastLogTime = updated.Status.Log.LastestLog.Time
 			}
-			newLastestTime, newLastestMsg, totalMsgCount, warningMsgCount, newLogAccount := c.GenerateEvents(logEntrys, name, lastLogTime)
+			newLastestTime, newLastestMsg, newLastestWarningTime, newLastestWarningMsg, totalMsgCount, warningMsgCount, newLogAccount := c.GenerateEvents(logEntrys, name, lastLogTime)
 			if newLastestTime != "" {
 				updated.Status.Log.TotalLogAccount = int32(totalMsgCount)
 				updated.Status.Log.WarningLogAccount = int32(warningMsgCount)
 				updated.Status.Log.LastestLog = &bmcv1beta1.LogEntry{
 					Time:    newLastestTime,
 					Message: newLastestMsg,
+				}
+				updated.Status.Log.LastestWarningLog = &bmcv1beta1.LogEntry{
+					Time:    newLastestWarningTime,
+					Message: newLastestWarningMsg,
 				}
 				log.Logger.Infof("find %d new logs for hostStatus %s", newLogAccount, name)
 			}

@@ -43,6 +43,8 @@ type LogStruct struct {
 	WarningLogAccount int32 `json:"warningLogAccount"`
 	// +optional
 	LastestLog *LogEntry `json:"lastestLog,omitempty"`
+	// +optional
+	LastestWarningLog *LogEntry `json:"lastestWarningLog,omitempty"`
 }
 
 type LogEntry struct {

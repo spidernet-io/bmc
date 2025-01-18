@@ -180,6 +180,7 @@ func (r *HostEndpointReconciler) handleHostEndpoint(ctx context.Context, hostEnd
 			TotalLogAccount:   0,
 			WarningLogAccount: 0,
 			LastestLog:        nil,
+			LastestWarningLog: nil,
 		},
 	}
 
