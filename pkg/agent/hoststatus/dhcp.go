@@ -152,6 +152,7 @@ func (c *hostStatusController) handleDHCPAdd(client dhcptypes.ClientInfo) error 
 			TotalLogAccount:   0,
 			WarningLogAccount: 0,
 			LastestLog:        nil,
+			LastestWarningLog: nil,
 		},
 	}
 	if c.config.AgentObjSpec.Endpoint.SecretName != "" {

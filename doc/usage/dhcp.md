@@ -4,6 +4,10 @@
 
 Agent 中的 DHCP server，支持把 DHCP client 的 IP 固定到 DHCP server 的配置中， 从而实现 DHCP client 的 IP 固定。
 
+### DHCP server 的配置
+
+DHCP server 的配置文件，位于 confimap bmc-dhcp-config 中，若有修改需求，设置后，再重启 agent pod
+
 ### DHCP client 的 IP 固定
 
 当`EnableDhcpDiscovery`功能开启时：

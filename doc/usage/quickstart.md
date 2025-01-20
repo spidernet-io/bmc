@@ -314,6 +314,10 @@ test-hostendpoint                bmc-clusteragent   true      192.168.0.50    ho
 ```bash
 # 获取所有 BMC 主机的日志
 kubectl get events -n bmc --field-selector reason=BMCLogEntry
+    LAST SEEN   TYPE      REASON        OBJECT                                      MESSAGE
+    30s         Warning   BMCLogEntry   hoststatus/bmc-clusteragent-192-168-0-100   [2012-03-07T14:45:00Z][Critical]:  Temperature threshold exceeded
+    2m13s       Warning   BMCLogEntry   hoststatus/bmc-clusteragent-192-168-0-101   [2012-03-07T14:45:00Z][Critical]:  Temperature threshold exceeded
+    105s        Normal    BMCLogEntry   hoststatus/device-safe                      [2018-08-31T13:33:54+00:00][]:  [ PS1 Status ] Power Supply Failure
 
 # 获取指定 BMC 主机的日志
 kubectl get events -n bmc --field-selector reason=BMCLogEntry,involvedObject.name=${HoststatusName}
@@ -322,11 +326,15 @@ kubectl get events -n bmc --field-selector reason=BMCLogEntry,involvedObject.nam
 kubectl get hoststatus ${HoststatusName} -n bmc -o jsonpath='{.status.log}' | jq .
   {
     "lastestLog": {
-      "message": "[][2018-08-31T13:33:54+00:00][]: [ PS1 Status ] Power Supply Failure",
-      "time": "2018-08-31T13:33:54+00:00"
+      "message": "[2024-10-16T22:47:28Z][Critical]:  [GS-0002] GPU Temp, 6 is not present",
+      "time": "2024-10-16T22:47:28Z"
     },
-    "totalLogAccount": 67,
-    "warningLogAccount": 67
+    "lastestWarningLog": {
+      "message": "[2024-10-16T22:47:28Z][Critical]:  [GS-0002] GPU Temp, 6 is not present",
+      "time": "2024-10-16T22:47:28Z"
+    },
+    "totalLogAccount": 52,
+    "warningLogAccount": 35
   }
 
 ```
