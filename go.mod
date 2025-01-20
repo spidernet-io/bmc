@@ -1,6 +1,6 @@
 module github.com/spidernet-io/bmc
 
-go 1.23.4
+go 1.23.5
 
 require (
 	github.com/onsi/ginkgo/v2 v2.21.0
